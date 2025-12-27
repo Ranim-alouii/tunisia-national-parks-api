@@ -15,8 +15,29 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
+import logging
+import time
+from fastapi import Request
+
 
 app = FastAPI(title="Tunisia National Parks API")
+
+logger = logging.getLogger("tunisia_parks")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+)
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_ms = (time.time() - start_time) * 1000
+    logger.info(
+        f"{request.method} {request.url.path} -> {response.status_code} "
+        f"({process_ms:.2f} ms)"
+    )
+    return response
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
