@@ -1,10 +1,12 @@
 from typing import List, Literal
 from datetime import datetime, timedelta, timezone
 
-from fastapi import FastAPI, HTTPException, Request, Depends, status
+from fastapi import FastAPI, HTTPException, Request, Depends, status, File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 from jose import JWTError, jwt
@@ -15,11 +17,30 @@ import time
 
 from database import init_db, engine
 from models import ParkDB, SpeciesDB, ParkSpeciesLink
-
-from fastapi.middleware.cors import CORSMiddleware
 from config import settings
+from utils import (
+    save_upload_file, 
+    delete_file, 
+    get_file_url,
+    PARKS_DIR,
+    SPECIES_DIR,
+)
 
-app = FastAPI(title="Tunisia National Parks API")
+app = FastAPI(
+    title="Tunisia National Parks API",
+    description="""
+    API for managing Tunisia's national parks, species, routes, and emergency information.
+    
+    ## Features
+    * **Authentication**: Secure JWT-based authentication
+    * **Parks Management**: CRUD operations for national parks
+    * **Species Management**: Manage endangered species and their conservation
+    * **Image Upload**: Upload and manage images for parks and species
+    * **Route Information**: Get travel directions and safety tips
+    * **Emergency**: Report emergencies with location data
+    """,
+    version="1.0.0",
+)
 
 # Add CORS middleware
 app.add_middleware(
@@ -30,11 +51,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Configure logging
 logger = logging.getLogger("tunisia_parks")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
 )
+
+# Mount uploads directory for serving static files
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -47,6 +73,7 @@ async def log_requests(request: Request, call_next):
     )
     return response
 
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(
@@ -58,6 +85,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             }
         },
     )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -72,17 +100,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         },
     )
 
-# ---------- SECURITY CONFIG (SINGLE ADMIN) ----------
 
-SECRET_KEY = "change-this-secret-key-to-something-random-and-long"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
-
-# ---------- SECURITY CONFIG (SINGLE ADMIN) ----------
+# ---------- SECURITY CONFIG ----------
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
-
 
 
 class Token(BaseModel):
@@ -122,8 +144,6 @@ fake_admin_user_db: dict[str, UserInDB] = {
     )
 }
 
-from datetime import datetime, timedelta
-
 
 def get_user(username: str) -> UserInDB | None:
     return fake_admin_user_db.get(username)
@@ -148,7 +168,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return encoded_jwt
 
 
-
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -169,19 +188,26 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     return user
 
 
-
 @app.on_event("startup")
 def on_startup():
     init_db()
 
 
-@app.get("/api/health")
+@app.get("/api/health", tags=["Health"])
 def health_check():
+    """Check if the API is running"""
     return {"status": "ok"}
 
 
-@app.post("/auth/token", response_model=Token)
+@app.post("/auth/token", response_model=Token, tags=["Authentication"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    """
+    Login to get an access token.
+    
+    Use the following credentials:
+    - **username**: admin
+    - **password**: admin123
+    """
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -226,8 +252,9 @@ class ParkUpdate(BaseModel):
 
 # ---------- PARK ENDPOINTS ----------
 
-@app.get("/api/parks", response_model=List[Park])
+@app.get("/api/parks", response_model=List[Park], tags=["Parks"])
 def list_parks():
+    """Get a list of all national parks"""
     with Session(engine) as session:
         parks_db = session.exec(select(ParkDB)).all()
         return [
@@ -239,14 +266,15 @@ def list_parks():
                 latitude=p.latitude,
                 longitude=p.longitude,
                 area_km2=p.area_km2,
-                images=[],
+                images=[get_file_url(img, "parks") for img in (p.images or [])],
             )
             for p in parks_db
         ]
 
 
-@app.get("/api/parks/{park_id}", response_model=Park)
+@app.get("/api/parks/{park_id}", response_model=Park, tags=["Parks"])
 def get_park(park_id: int):
+    """Get details of a specific park by ID"""
     with Session(engine) as session:
         park = session.get(ParkDB, park_id)
         if park is None:
@@ -260,15 +288,20 @@ def get_park(park_id: int):
             latitude=park.latitude,
             longitude=park.longitude,
             area_km2=park.area_km2,
-            images=[],
+            images=[get_file_url(img, "parks") for img in (park.images or [])],
         )
 
 
-@app.post("/api/parks", response_model=Park, status_code=201)
+@app.post("/api/parks", response_model=Park, status_code=201, tags=["Parks"])
 def create_park(
     park_in: ParkCreate,
     current_user: User = Depends(get_current_user),
-    ):
+):
+    """
+    Create a new park (requires authentication).
+    
+    Click the 🔒 lock icon to authorize with your token.
+    """
     with Session(engine) as session:
         park_db = ParkDB(
             name=park_in.name,
@@ -294,12 +327,13 @@ def create_park(
         )
 
 
-@app.put("/api/parks/{park_id}", response_model=Park)
+@app.put("/api/parks/{park_id}", response_model=Park, tags=["Parks"])
 def update_park(
     park_id: int, 
     park_in: ParkUpdate,
     current_user: User = Depends(get_current_user),
-    ):
+):
+    """Update an existing park (requires authentication)"""
     with Session(engine) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
@@ -321,22 +355,93 @@ def update_park(
             latitude=park_db.latitude,
             longitude=park_db.longitude,
             area_km2=park_db.area_km2,
-            images=[],
+            images=[get_file_url(img, "parks") for img in (park_db.images or [])],
         )
 
 
-@app.delete("/api/parks/{park_id}", status_code=204)
+@app.delete("/api/parks/{park_id}", status_code=204, tags=["Parks"])
 def delete_park(
     park_id: int,
     current_user: User = Depends(get_current_user),
-    ):
+):
+    """Delete a park and all its images (requires authentication)"""
     with Session(engine) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
             raise HTTPException(status_code=404, detail="Park not found")
 
+        # Delete all associated images
+        if park_db.images:
+            for img_filename in park_db.images:
+                delete_file(img_filename, PARKS_DIR)
+
         session.delete(park_db)
         session.commit()
+        return None
+
+
+# ---------- PARK IMAGE ENDPOINTS ----------
+
+@app.post("/api/parks/{park_id}/images", status_code=201, tags=["Park Images"])
+async def upload_park_image(
+    park_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Upload an image for a park (requires authentication).
+    
+    Accepted formats: JPG, JPEG, PNG, WEBP
+    Max size: 5MB
+    """
+    with Session(engine) as session:
+        park_db = session.get(ParkDB, park_id)
+        if park_db is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+        
+        # Save the file
+        filename = await save_upload_file(file, PARKS_DIR)
+        
+        # Add filename to park's images list
+        if park_db.images is None:
+            park_db.images = []
+        park_db.images.append(filename)
+        
+        session.add(park_db)
+        session.commit()
+        session.refresh(park_db)
+        
+        return {
+            "message": "Image uploaded successfully",
+            "filename": filename,
+            "url": get_file_url(filename, "parks"),
+            "total_images": len(park_db.images)
+        }
+
+
+@app.delete("/api/parks/{park_id}/images/{filename}", status_code=204, tags=["Park Images"])
+def delete_park_image(
+    park_id: int,
+    filename: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a specific image from a park (requires authentication)"""
+    with Session(engine) as session:
+        park_db = session.get(ParkDB, park_id)
+        if park_db is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+        
+        if not park_db.images or filename not in park_db.images:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # Remove from database
+        park_db.images.remove(filename)
+        session.add(park_db)
+        session.commit()
+        
+        # Delete file
+        delete_file(filename, PARKS_DIR)
+        
         return None
 
 
@@ -378,11 +483,18 @@ class SpeciesUpdate(BaseModel):
 
 # ---------- SPECIES ENDPOINTS ----------
 
-@app.get("/api/species", response_model=List[Species])
+@app.get("/api/species", response_model=List[Species], tags=["Species"])
 def list_species(
     type: Literal["animal", "plant"] | None = None,
     park_id: int | None = None,
 ):
+    """
+    Get a list of all species.
+    
+    Optional filters:
+    - **type**: Filter by 'animal' or 'plant'
+    - **park_id**: Filter species by park ID
+    """
     with Session(engine) as session:
         statement = select(SpeciesDB)
 
@@ -406,15 +518,16 @@ def list_species(
                 description=s.description,
                 threats=s.threats,
                 protection_measures=s.protection_measures,
-                image_url=s.image_url,
+                image_url=get_file_url(s.image_url, "species") if s.image_url else None,
                 park_ids=[p.id for p in s.parks],
             )
             for s in species_db
         ]
 
 
-@app.get("/api/species/{species_id}", response_model=Species)
+@app.get("/api/species/{species_id}", response_model=Species, tags=["Species"])
 def get_species(species_id: int):
+    """Get details of a specific species by ID"""
     with Session(engine) as session:
         s = session.get(SpeciesDB, species_id)
         if s is None:
@@ -428,13 +541,14 @@ def get_species(species_id: int):
             description=s.description,
             threats=s.threats,
             protection_measures=s.protection_measures,
-            image_url=s.image_url,
+            image_url=get_file_url(s.image_url, "species") if s.image_url else None,
             park_ids=[p.id for p in s.parks],
         )
 
 
-@app.get("/api/parks/{park_id}/species", response_model=List[Species])
+@app.get("/api/parks/{park_id}/species", response_model=List[Species], tags=["Species"])
 def list_species_for_park(park_id: int):
+    """Get all species found in a specific park"""
     with Session(engine) as session:
         park = session.get(ParkDB, park_id)
         if park is None:
@@ -449,18 +563,19 @@ def list_species_for_park(park_id: int):
                 description=s.description,
                 threats=s.threats,
                 protection_measures=s.protection_measures,
-                image_url=s.image_url,
+                image_url=get_file_url(s.image_url, "species") if s.image_url else None,
                 park_ids=[p.id for p in s.parks],
             )
             for s in park.species
         ]
 
 
-@app.post("/api/species", response_model=Species, status_code=201)
+@app.post("/api/species", response_model=Species, status_code=201, tags=["Species"])
 def create_species(
     species_in: SpeciesCreate,
     current_user: User = Depends(get_current_user),
-    ):
+):
+    """Create a new species (requires authentication)"""
     with Session(engine) as session:
         species_db = SpeciesDB(
             name=species_in.name,
@@ -492,17 +607,18 @@ def create_species(
             description=species_db.description,
             threats=species_db.threats,
             protection_measures=species_db.protection_measures,
-            image_url=species_db.image_url,
+            image_url=get_file_url(species_db.image_url, "species") if species_db.image_url else None,
             park_ids=[p.id for p in species_db.parks],
         )
 
 
-@app.put("/api/species/{species_id}", response_model=Species)
+@app.put("/api/species/{species_id}", response_model=Species, tags=["Species"])
 def update_species(
     species_id: int, 
     species_in: SpeciesUpdate,
     current_user: User = Depends(get_current_user),
-    ):
+):
+    """Update an existing species (requires authentication)"""
     with Session(engine) as session:
         species_db = session.get(SpeciesDB, species_id)
         if species_db is None:
@@ -548,23 +664,92 @@ def update_species(
             description=species_db.description,
             threats=species_db.threats,
             protection_measures=species_db.protection_measures,
-            image_url=species_db.image_url,
+            image_url=get_file_url(species_db.image_url, "species") if species_db.image_url else None,
             park_ids=[p.id for p in species_db.parks],
         )
 
 
-@app.delete("/api/species/{species_id}", status_code=204)
+@app.delete("/api/species/{species_id}", status_code=204, tags=["Species"])
 def delete_species(
     species_id: int,
     current_user: User = Depends(get_current_user),
-    ):
+):
+    """Delete a species and its image (requires authentication)"""
     with Session(engine) as session:
         species_db = session.get(SpeciesDB, species_id)
         if species_db is None:
             raise HTTPException(status_code=404, detail="Species not found")
 
+        # Delete image if exists
+        if species_db.image_url:
+            delete_file(species_db.image_url, SPECIES_DIR)
+
         session.delete(species_db)
         session.commit()
+        return None
+
+
+# ---------- SPECIES IMAGE ENDPOINTS ----------
+
+@app.post("/api/species/{species_id}/image", status_code=201, tags=["Species Images"])
+async def upload_species_image(
+    species_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Upload an image for a species (requires authentication).
+    
+    Replaces existing image if one exists.
+    Accepted formats: JPG, JPEG, PNG, WEBP
+    Max size: 5MB
+    """
+    with Session(engine) as session:
+        species_db = session.get(SpeciesDB, species_id)
+        if species_db is None:
+            raise HTTPException(status_code=404, detail="Species not found")
+        
+        # Delete old image if exists
+        if species_db.image_url:
+            delete_file(species_db.image_url, SPECIES_DIR)
+        
+        # Save new image
+        filename = await save_upload_file(file, SPECIES_DIR)
+        species_db.image_url = filename
+        
+        session.add(species_db)
+        session.commit()
+        session.refresh(species_db)
+        
+        return {
+            "message": "Image uploaded successfully",
+            "filename": filename,
+            "url": get_file_url(filename, "species")
+        }
+
+
+@app.delete("/api/species/{species_id}/image", status_code=204, tags=["Species Images"])
+def delete_species_image(
+    species_id: int,
+    current_user: User = Depends(get_current_user),
+):
+    """Delete the image from a species (requires authentication)"""
+    with Session(engine) as session:
+        species_db = session.get(SpeciesDB, species_id)
+        if species_db is None:
+            raise HTTPException(status_code=404, detail="Species not found")
+        
+        if not species_db.image_url:
+            raise HTTPException(status_code=404, detail="No image to delete")
+        
+        # Delete file
+        delete_file(species_db.image_url, SPECIES_DIR)
+        
+        # Update database
+        species_db.image_url = None
+        session.add(species_db)
+        session.commit()
+        
         return None
 
 
@@ -620,8 +805,13 @@ def build_route_info(park: ParkDB) -> RouteInfo:
     )
 
 
-@app.get("/api/parks/{park_id}/route", response_model=RouteInfo)
+@app.get("/api/parks/{park_id}/route", response_model=RouteInfo, tags=["Routes & Emergency"])
 def get_route_for_park(park_id: int):
+    """
+    Get travel directions and safety tips for a specific park.
+    
+    Provides nearest city, travel advice, and safety recommendations.
+    """
     with Session(engine) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
@@ -644,8 +834,14 @@ class EmergencyResponse(BaseModel):
     park_info: dict | None = None
 
 
-@app.post("/api/emergency", response_model=EmergencyResponse)
+@app.post("/api/emergency", response_model=EmergencyResponse, tags=["Routes & Emergency"])
 def handle_emergency(payload: EmergencyRequest):
+    """
+    Report an emergency situation.
+    
+    Provides emergency contact numbers and recommended actions.
+    Include GPS coordinates and/or park_id for better assistance.
+    """
     emergency_numbers = {
         "international": 112,
         "ambulance_samu": 190,
@@ -696,3 +892,4 @@ def handle_emergency(payload: EmergencyRequest):
         emergency_numbers=emergency_numbers,
         park_info=park_info,
     )
+# ---------- END OF FILE ----------

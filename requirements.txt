@@ -6,3 +6,5 @@ passlib[bcrypt]
 python-multipart
 pydantic-settings
 python-dotenv
+pillow
+aiofiles
