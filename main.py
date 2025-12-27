@@ -1,12 +1,140 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from typing import List, Literal
 
-from database import init_db, engine
-from models import ParkDB, SpeciesDB
+from fastapi import FastAPI, HTTPException, Request, Depends, status
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
+from database import init_db, engine
+from models import ParkDB, SpeciesDB, ParkSpeciesLink
+
+
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette import status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+
 app = FastAPI(title="Tunisia National Parks API")
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.status_code,
+                "message": exc.detail,
+            }
+        },
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": {
+                "code": 422,
+                "message": "Validation failed",
+                "details": exc.errors(),
+            }
+        },
+    )
+
+# ---------- SECURITY CONFIG (SINGLE ADMIN) ----------
+
+SECRET_KEY = "change-this-secret-key-to-something-random-and-long"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
+
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: str | None = None
+
+
+class User(BaseModel):
+    username: str
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+# Single in-memory admin user
+fake_admin_username = "admin"
+fake_admin_password = "admin123"  # plain password you will use to log in
+fake_admin_user_db: dict[str, UserInDB] = {
+    fake_admin_username: UserInDB(
+        username=fake_admin_username,
+        full_name="Park Admin",
+        disabled=False,
+        hashed_password=get_password_hash(fake_admin_password),
+    )
+}
+
+from datetime import datetime, timedelta
+
+
+def get_user(username: str) -> UserInDB | None:
+    return fake_admin_user_db.get(username)
+
+
+def authenticate_user(username: str, password: str) -> UserInDB | None:
+    user = get_user(username)
+    if not user:
+        return None
+    if not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str | None = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+
+    user = get_user(token_data.username)
+    if user is None or user.disabled:
+        raise credentials_exception
+    return user
+
 
 @app.on_event("startup")
 def on_startup():
@@ -18,6 +146,21 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.post("/auth/token", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+# ---------- PARK MODELS ----------
+
 class Park(BaseModel):
     id: int
     name: str
@@ -28,22 +171,26 @@ class Park(BaseModel):
     area_km2: float
     images: List[str]
 
+
 class ParkCreate(BaseModel):
     name: str
     governorate: str
     description: str
-    latitude: float
-    longitude: float
-    area_km2: float
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    area_km2: float = Field(gt=0)
 
 
 class ParkUpdate(BaseModel):
     name: str | None = None
     governorate: str | None = None
     description: str | None = None
-    latitude: float | None = None
-    longitude: float | None = None
-    area_km2: float | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    area_km2: float | None = Field(default=None, gt=0)
+
+
+# ---------- PARK ENDPOINTS ----------
 
 @app.get("/api/parks", response_model=List[Park])
 def list_parks():
@@ -58,7 +205,7 @@ def list_parks():
                 latitude=p.latitude,
                 longitude=p.longitude,
                 area_km2=p.area_km2,
-                images=[],  # we will fill later
+                images=[],
             )
             for p in parks_db
         ]
@@ -82,8 +229,12 @@ def get_park(park_id: int):
             images=[],
         )
 
+
 @app.post("/api/parks", response_model=Park, status_code=201)
-def create_park(park_in: ParkCreate):
+def create_park(
+    park_in: ParkCreate,
+    current_user: User = Depends(get_current_user),
+    ):
     with Session(engine) as session:
         park_db = ParkDB(
             name=park_in.name,
@@ -107,9 +258,14 @@ def create_park(park_in: ParkCreate):
             area_km2=park_db.area_km2,
             images=[],
         )
-    
+
+
 @app.put("/api/parks/{park_id}", response_model=Park)
-def update_park(park_id: int, park_in: ParkUpdate):
+def update_park(
+    park_id: int, 
+    park_in: ParkUpdate,
+    current_user: User = Depends(get_current_user),
+    ):
     with Session(engine) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
@@ -133,9 +289,13 @@ def update_park(park_id: int, park_in: ParkUpdate):
             area_km2=park_db.area_km2,
             images=[],
         )
-    
+
+
 @app.delete("/api/parks/{park_id}", status_code=204)
-def delete_park(park_id: int):
+def delete_park(
+    park_id: int,
+    current_user: User = Depends(get_current_user),
+    ):
     with Session(engine) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
@@ -144,6 +304,9 @@ def delete_park(park_id: int):
         session.delete(park_db)
         session.commit()
         return None
+
+
+# ---------- SPECIES MODELS ----------
 
 class Species(BaseModel):
     id: int
@@ -156,6 +319,7 @@ class Species(BaseModel):
     image_url: str | None = None
     park_ids: List[int]
 
+
 class SpeciesCreate(BaseModel):
     name: str
     type: Literal["animal", "plant"]
@@ -164,7 +328,7 @@ class SpeciesCreate(BaseModel):
     threats: str
     protection_measures: str
     image_url: str | None = None
-    park_ids: List[int] = []  # parks where the species lives
+    park_ids: List[int] = []
 
 
 class SpeciesUpdate(BaseModel):
@@ -176,6 +340,9 @@ class SpeciesUpdate(BaseModel):
     protection_measures: str | None = None
     image_url: str | None = None
     park_ids: List[int] | None = None
+
+
+# ---------- SPECIES ENDPOINTS ----------
 
 @app.get("/api/species", response_model=List[Species])
 def list_species(
@@ -190,7 +357,6 @@ def list_species(
 
         species_db = session.exec(statement).all()
 
-        # if park filter, filter in Python using relationship
         if park_id is not None:
             species_db = [
                 s for s in species_db
@@ -201,7 +367,7 @@ def list_species(
             Species(
                 id=s.id,
                 name=s.name,
-                type=s.type.value,  # Enum to str
+                type=s.type.value,
                 scientific_name=s.scientific_name,
                 description=s.description,
                 threats=s.threats,
@@ -231,7 +397,8 @@ def get_species(species_id: int):
             image_url=s.image_url,
             park_ids=[p.id for p in s.parks],
         )
-    
+
+
 @app.get("/api/parks/{park_id}/species", response_model=List[Species])
 def list_species_for_park(park_id: int):
     with Session(engine) as session:
@@ -254,15 +421,16 @@ def list_species_for_park(park_id: int):
             for s in park.species
         ]
 
-from models import ParkDB, SpeciesDB, ParkSpeciesLink
-# make sure ParkSpeciesLink is imported
 
 @app.post("/api/species", response_model=Species, status_code=201)
-def create_species(species_in: SpeciesCreate):
+def create_species(
+    species_in: SpeciesCreate,
+    current_user: User = Depends(get_current_user),
+    ):
     with Session(engine) as session:
         species_db = SpeciesDB(
             name=species_in.name,
-            type=species_in.type,  # Enum field, Literal values match Enum names
+            type=species_in.type,
             scientific_name=species_in.scientific_name,
             description=species_in.description,
             threats=species_in.threats,
@@ -273,7 +441,6 @@ def create_species(species_in: SpeciesCreate):
         session.commit()
         session.refresh(species_db)
 
-        # link to parks
         if species_in.park_ids:
             for park_id in species_in.park_ids:
                 park = session.get(ParkDB, park_id)
@@ -294,9 +461,14 @@ def create_species(species_in: SpeciesCreate):
             image_url=species_db.image_url,
             park_ids=[p.id for p in species_db.parks],
         )
-    
+
+
 @app.put("/api/species/{species_id}", response_model=Species)
-def update_species(species_id: int, species_in: SpeciesUpdate):
+def update_species(
+    species_id: int, 
+    species_in: SpeciesUpdate,
+    current_user: User = Depends(get_current_user),
+    ):
     with Session(engine) as session:
         species_db = session.get(SpeciesDB, species_id)
         if species_db is None:
@@ -304,7 +476,6 @@ def update_species(species_id: int, species_in: SpeciesUpdate):
 
         data = species_in.model_dump(exclude_unset=True)
 
-        # update simple fields
         simple_fields = {
             "name",
             "type",
@@ -318,17 +489,14 @@ def update_species(species_id: int, species_in: SpeciesUpdate):
             if field in data:
                 setattr(species_db, field, data[field])
 
-        # update park links if provided
         if "park_ids" in data:
             new_ids = set(data["park_ids"] or [])
             current_ids = {p.id for p in species_db.parks}
 
-            # remove links not in new_ids
             for park in list(species_db.parks):
                 if park.id not in new_ids:
                     species_db.parks.remove(park)
 
-            # add new links
             for park_id in new_ids - current_ids:
                 park = session.get(ParkDB, park_id)
                 if park:
@@ -349,9 +517,13 @@ def update_species(species_id: int, species_in: SpeciesUpdate):
             image_url=species_db.image_url,
             park_ids=[p.id for p in species_db.parks],
         )
-    
+
+
 @app.delete("/api/species/{species_id}", status_code=204)
-def delete_species(species_id: int):
+def delete_species(
+    species_id: int,
+    current_user: User = Depends(get_current_user),
+    ):
     with Session(engine) as session:
         species_db = session.get(SpeciesDB, species_id)
         if species_db is None:
@@ -360,6 +532,9 @@ def delete_species(species_id: int):
         session.delete(species_db)
         session.commit()
         return None
+
+
+# ---------- ROUTE & EMERGENCY ----------
 
 class RouteInfo(BaseModel):
     park_id: int
@@ -371,8 +546,8 @@ class RouteInfo(BaseModel):
     travel_advice: str
     safety_tips: List[str]
 
+
 def build_route_info(park: ParkDB) -> RouteInfo:
-    # Very simple mapping; you can extend later
     if "Ichkeul" in park.name:
         nearest_city = "Bizerte"
         travel_advice = (
@@ -392,11 +567,11 @@ def build_route_info(park: ParkDB) -> RouteInfo:
         )
 
     safety_tips = [
-        "Check current security and access rules for the park before your trip.",  # [web:192][web:203]
+        "Check current security and access rules for the park before your trip.",
         "Tell someone your route and expected return time.",
         "Take enough water, sun protection, and a fully charged phone.",
-        "Stay on marked trails and respect park rules about waste and wildlife.",  # [web:200][web:203]
-        "Avoid hiking alone late in the day; plan to leave before dark where parks have closing hours.",  # [web:191][web:203]
+        "Stay on marked trails and respect park rules about waste and wildlife.",
+        "Avoid hiking alone late in the day; plan to leave before dark where parks have closing hours.",
     ]
 
     return RouteInfo(
@@ -410,6 +585,7 @@ def build_route_info(park: ParkDB) -> RouteInfo:
         safety_tips=safety_tips,
     )
 
+
 @app.get("/api/parks/{park_id}/route", response_model=RouteInfo)
 def get_route_for_park(park_id: int):
     with Session(engine) as session:
@@ -419,11 +595,12 @@ def get_route_for_park(park_id: int):
 
         return build_route_info(park_db)
 
+
 class EmergencyRequest(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     park_id: int | None = None
-    situation: str  # short free-text description from the user
+    situation: str
 
 
 class EmergencyResponse(BaseModel):
@@ -432,17 +609,16 @@ class EmergencyResponse(BaseModel):
     emergency_numbers: dict
     park_info: dict | None = None
 
+
 @app.post("/api/emergency", response_model=EmergencyResponse)
 def handle_emergency(payload: EmergencyRequest):
-    # Base emergency numbers in Tunisia
     emergency_numbers = {
         "international": 112,
-        "ambulance_samu": 190,   # SAMU / ambulance [web:186][web:188]
-        "police": 197,           # Police de secours [web:186][web:188]
-        "fire": 198,             # Protection civile / pompiers [web:186][web:188]
+        "ambulance_samu": 190,
+        "police": 197,
+        "fire": 198,
     }
 
-    # Build context about park if provided
     park_info = None
     message_prefix = "Emergency reported."
 
@@ -459,13 +635,12 @@ def handle_emergency(payload: EmergencyRequest):
                 }
                 message_prefix = f"Emergency near {park.name}."
 
-    # General recommended actions based on hiking safety guidance
     recommended_actions = [
-        "If you or someone with you is in immediate danger or has a serious injury, call the appropriate emergency number now (190 ambulance, 197 police, 198 fire, or 112).",  # [web:186][web:187][web:188]
+        "If you or someone with you is in immediate danger or has a serious injury, call the appropriate emergency number now (190 ambulance, 197 police, 198 fire, or 112).",
         "Describe your location as clearly as possible: nearest town or road, park name, and any visible landmarks.",
         "If you have a GPS location on your phone or app, read the coordinates slowly to the operator.",
-        "Unless you are in immediate danger (rockfall, fire, flooding), stay where you are after calling so rescuers can find you more easily.",  # [web:210]
-        "Conserve phone battery: close non-essential apps, lower screen brightness, and keep the phone for emergency calls and navigation only.",  # [web:207][web:211]
+        "Unless you are in immediate danger (rockfall, fire, flooding), stay where you are after calling so rescuers can find you more easily.",
+        "Conserve phone battery: close non-essential apps, lower screen brightness, and keep the phone for emergency calls and navigation only.",
         "Keep warm, hydrated, and sheltered while you wait for help; use extra clothes or a space blanket if you have one.",
     ]
 
@@ -487,4 +662,3 @@ def handle_emergency(payload: EmergencyRequest):
         emergency_numbers=emergency_numbers,
         park_info=park_info,
     )
-
