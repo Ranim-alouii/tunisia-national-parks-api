@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Urgences - Parcs Nationaux de Tunisie{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top: 120px; background: linear-gradient(135deg, var(--danger) 0%, #c82333 100%); color: white;">
+    <div class="container">
+        <div class="text-center animate-fade-in-up">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h1>Urgences</h1>
+            <p class="text-lg" style="max-width: 600px; margin: 0 auto; opacity: 0.9;">
+                En cas d'urgence, restez calme et contactez immédiatement les services de secours.
+                Votre sécurité est notre priorité absolue.
+            </p>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="grid grid-3">
+            <!-- Emergency Numbers -->
+            <div class="card" style="text-align: center; border: 2px solid var(--danger);">
+                <div class="card-content">
+                    <div style="font-size: 3rem; color: var(--danger); margin-bottom: 1rem;">
+                        <i class="fas fa-phone"></i>
+                    </div>
+                    <h3>Numéros d'Urgence</h3>
+                    <div style="margin: 2rem 0;">
+                        <div style="margin-bottom: 1rem;">
+                            <strong style="font-size: 1.5rem; color: var(--danger);">190</strong>
+                            <p>SAMU - Ambulances</p>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <strong style="font-size: 1.5rem; color: var(--danger);">197</strong>
+                            <p>Police</p>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <strong style="font-size: 1.5rem; color: var(--danger);">198</strong>
+                            <p>Pompiers</p>
+                        </div>
+                        <div>
+                            <strong style="font-size: 1.5rem; color: var(--danger);">112</strong>
+                            <p>Numéro d'urgence européen</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emergency Report -->
+            <div class="card">
+                <div class="card-content">
+                    <h3><i class="fas fa-exclamation-circle"></i> Signaler une Urgence</h3>
+                    <form id="emergencyForm" style="margin-top: 1rem;">
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                                Localisation (parc)
+                            </label>
+                            <select id="emergencyPark" style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
+                                <option value="">Sélectionner un parc</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                                Description de la situation
+                            </label>
+                            <textarea
+                                id="emergencySituation"
+                                placeholder="Décrivez brièvement la situation d'urgence..."
+                                rows="4"
+                                style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);"
+                                required
+                            ></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            <i class="fas fa-paper-plane"></i> Envoyer le Signalement
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Safety Tips -->
+            <div class="card">
+                <div class="card-content">
+                    <h3><i class="fas fa-shield-alt"></i> Conseils de Sécurité</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.5rem;">
+                            <i class="fas fa-check-circle" style="color: var(--success); margin-top: 0.25rem;"></i>
+                            <span>Restez sur les sentiers balisés</span>
+                        </li>
+                        <li style="margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.5rem;">
+                            <i class="fas fa-check-circle" style="color: var(--success); margin-top: 0.25rem;"></i>
+                            <span>Emportez suffisamment d'eau et de nourriture</span>
+                        </li>
+                        <li style="margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.5rem;">
+                            <i class="fas fa-check-circle" style="color: var(--success); margin-top: 0.25rem;"></i>
+                            <span>Informez quelqu'un de votre itinéraire</span>
+                        </li>
+                        <li style="margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.5rem;">
+                            <i class="fas fa-check-circle" style="color: var(--success); margin-top: 0.25rem;"></i>
+                            <span>Respectez la faune et la flore</span>
+                        </li>
+                        <li style="margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.5rem;">
+                            <i class="fas fa-check-circle" style="color: var(--success); margin-top: 0.25rem;"></i>
+                            <span>En cas de doute, contactez les secours</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadParks() {
+    try {
+        const response = await fetch('/api/parks');
+        const parks = await response.json();
+
+        const select = document.getElementById('emergencyPark');
+        parks.forEach(park => {
+            const option = document.createElement('option');
+            option.value = park.id;
+            option.textContent = park.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading parks:', error);
+    }
+}
+
+document.getElementById('emergencyForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const parkId = document.getElementById('emergencyPark').value;
+    const situation = document.getElementById('emergencySituation').value;
+
+    if (!situation.trim()) {
+        alert('Veuillez décrire la situation');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/emergency', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                park_id: parkId ? parseInt(parkId) : null,
+                situation: situation
+            })
+        });
+
+        const data = await response.json();
+
+        // Show emergency response
+        let message = `🚨 URGENCE SIGNALÉE\n\n${data.message}\n\n`;
+        message += 'ACTIONS RECOMMANDÉES:\n';
+        data.recommended_actions.forEach(action => {
+            message += `• ${action}\n`;
+        });
+        message += '\nNUMÉROS D\'URGENCE:\n';
+        Object.entries(data.emergency_numbers).forEach(([key, value]) => {
+            message += `${key}: ${value}\n`;
+        });
+
+        alert(message);
+
+        // Reset form
+        document.getElementById('emergencyForm').reset();
+
+    } catch (error) {
+        console.error('Error reporting emergency:', error);
+        alert('Erreur lors de l\'envoi du signalement. Contactez directement les secours.');
+    }
+});
+
+document.addEventListener('DOMContentLoaded', loadParks);
+</script>
+{% endblock %}

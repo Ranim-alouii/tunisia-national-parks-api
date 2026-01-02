@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Comparer les Parcs - Parcs Nationaux de Tunisie{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h1 class="section-title">Comparer les Parcs</h1>
+            <p class="section-subtitle">Comparez jusqu'à 4 parcs côte à côte</p>
+        </div>
+
+        <div class="comparison-controls">
+            <input type="text" id="parkSearch" placeholder="Rechercher des parcs..." style="flex: 1; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
+            <div id="selectedParks" style="display: flex; gap: 0.5rem; flex-wrap: wrap; min-height: 40px; align-items: center;"></div>
+            <button class="btn btn-primary" onclick="compareParks()" id="compareBtn" disabled>
+                <i class="fas fa-balance-scale"></i> Comparer
+            </button>
+        </div>
+
+        <div id="comparisonResults" style="display: none;">
+            <h3>Résultats de la Comparaison</h3>
+            <div id="comparisonTable"></div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allParks = [];
+let selectedParks = [];
+
+async function loadParks() {
+    try {
+        const response = await fetch('/api/parks');
+        allParks = await response.json();
+        setupSearch();
+    } catch (error) {
+        console.error('Error loading parks:', error);
+    }
+}
+
+function setupSearch() {
+    const searchInput = document.getElementById('parkSearch');
+
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        if (query.length < 2) return;
+
+        const matches = allParks.filter(park =>
+            park.name.toLowerCase().includes(query) ||
+            park.governorate.toLowerCase().includes(query)
+        ).slice(0, 5);
+
+        showSuggestions(matches);
+    });
+}
+
+function showSuggestions(matches) {
+    // Simple implementation - in real app you'd show a dropdown
+    console.log('Suggestions:', matches);
+}
+
+function addToComparison(parkId) {
+    if (selectedParks.length >= 4) return;
+
+    const park = allParks.find(p => p.id === parkId);
+    if (!park || selectedParks.includes(park)) return;
+
+    selectedParks.push(park);
+    updateSelectedParks();
+}
+
+function removeFromComparison(parkId) {
+    selectedParks = selectedParks.filter(p => p.id !== parkId);
+    updateSelectedParks();
+}
+
+function updateSelectedParks() {
+    const container = document.getElementById('selectedParks');
+    const compareBtn = document.getElementById('compareBtn');
+
+    container.innerHTML = selectedParks.map(park => `
+        <span class="badge badge-info" style="cursor: pointer;" onclick="removeFromComparison(${park.id})">
+            ${park.name} <i class="fas fa-times"></i>
+        </span>
+    `).join('');
+
+    compareBtn.disabled = selectedParks.length < 2;
+}
+
+async function compareParks() {
+    if (selectedParks.length < 2) return;
+
+    const parkIds = selectedParks.map(p => p.id).join(',');
+    try {
+        const response = await fetch(`/api/parks/compare?park_ids=${parkIds}`);
+        const data = await response.json();
+
+        displayComparison(data);
+    } catch (error) {
+        console.error('Error comparing parks:', error);
+    }
+}
+
+function displayComparison(data) {
+    const container = document.getElementById('comparisonResults');
+    container.style.display = 'block';
+
+    let html = '<div class="comparison-table">';
+    html += '<table>';
+    html += '<thead><tr><th>Critère</th>';
+    data.forEach(park => {
+        html += `<th>${park.park_name}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    // Add rows for different criteria
+    const criteria = [
+        { key: 'governorate', label: 'Gouvernorat' },
+        { key: 'area_hectares', label: 'Superficie (ha)' },
+        { key: 'species_count', label: 'Nombre d\'espèces' },
+        { key: 'trails_count', label: 'Nombre de sentiers' },
+        { key: 'average_rating', label: 'Note moyenne' }
+    ];
+
+    criteria.forEach(criterion => {
+        html += `<tr><td><strong>${criterion.label}</strong></td>`;
+        data.forEach(park => {
+            const value = park[criterion.key];
+            html += `<td>${value !== null ? value : 'N/A'}</td>`;
+        });
+        html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    document.getElementById('comparisonTable').innerHTML = html;
+}
+
+document.addEventListener('DOMContentLoaded', loadParks);
+</script>
+{% endblock %}

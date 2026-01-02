@@ -1,602 +1,495 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parcs Nationaux de Tunisie - Carte Interactive</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        #map {
-            height: 100vh;
-            width: 100%;
-        }
-        
-        /* IMPROVED POPUP - Full height, better scrolling */
-        .leaflet-popup-content-wrapper {
-            max-height: 80vh;
-            overflow: hidden;
-            padding: 0;
-        }
-        .leaflet-popup-content {
-            margin: 0;
-            width: 400px !important;
-            max-width: 90vw;
-        }
-        
-        .park-popup {
-            max-height: 75vh;
-            overflow-y: auto;
-            padding: 15px;
-        }
-        
-        /* Smooth scrolling */
-        .park-popup::-webkit-scrollbar {
-            width: 8px;
-        }
-        .park-popup::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        .park-popup::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
-        }
-        .park-popup::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-        
-        .park-popup h3 {
-            color: #2c5f2d;
-            margin-bottom: 8px;
-            font-size: 18px;
-            position: sticky;
-            top: 0;
-            background: white;
-            padding: 5px 0;
-            z-index: 10;
-            border-bottom: 2px solid #2c5f2d;
-        }
-        .park-popup h4 {
-            color: #4a7c4e;
-            margin-top: 15px;
-            margin-bottom: 8px;
-            font-size: 14px;
-            border-bottom: 2px solid #4a7c4e;
-            padding-bottom: 3px;
-        }
-        .park-popup p {
-            margin: 5px 0;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-        .park-popup .location {
-            color: #666;
-            font-size: 13px;
-            margin-bottom: 8px;
-        }
-        .park-popup .area {
-            color: #888;
-            font-size: 12px;
-            font-style: italic;
-        }
-        .park-popup .description {
-            margin-top: 10px;
-            line-height: 1.6;
-            text-align: justify;
-        }
-        .park-popup .buttons {
-            margin-top: 12px;
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-            position: sticky;
-            bottom: 0;
-            background: white;
-            padding: 10px 0;
-            border-top: 1px solid #eee;
-        }
-        .park-popup button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            flex: 1;
-            min-width: 120px;
-            transition: all 0.3s;
-        }
-        .park-popup button:hover {
-            background: #45a049;
-            transform: translateY(-2px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-        .park-popup .directions-btn {
-            background: #2196F3;
-        }
-        .park-popup .directions-btn:hover {
-            background: #0b7dda;
-        }
-        
-        .weather-info {
-            margin-top: 10px;
-            padding: 10px;
-            background: #e3f2fd;
-            border-radius: 6px;
-            font-size: 13px;
-            border-left: 4px solid #2196F3;
-        }
-        .weather-info strong {
-            color: #1976D2;
-        }
-        
-        .species-container {
-            margin-top: 10px;
-        }
-        .species-item {
-            background: #f9f9f9;
-            padding: 10px;
-            margin: 8px 0;
-            border-radius: 6px;
-            border-left: 4px solid #4CAF50;
-            display: flex;
-            gap: 10px;
-            transition: all 0.3s;
-        }
-        .species-item:hover {
-            background: #f0f0f0;
-            transform: translateX(5px);
-        }
-        .species-item.plant {
-            border-left-color: #8BC34A;
-        }
-        .species-item.animal {
-            border-left-color: #FF5722;
-        }
-        .species-image {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 6px;
-            flex-shrink: 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .species-content {
-            flex: 1;
-        }
-        .species-name {
-            font-weight: bold;
-            color: #2c5f2d;
-            font-size: 14px;
-            margin-bottom: 2px;
-        }
-        .species-scientific {
-            font-style: italic;
-            color: #666;
-            font-size: 11px;
-            margin-bottom: 5px;
-        }
-        .safety-warning {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 4px;
-            padding: 6px;
-            margin-top: 6px;
-            font-size: 11px;
-        }
-        .safety-warning strong {
-            color: #856404;
-        }
-        .medicinal-info {
-            background: #d1ecf1;
-            border: 1px solid #17a2b8;
-            border-radius: 4px;
-            padding: 6px;
-            margin-top: 6px;
-            font-size: 11px;
-        }
-        .medicinal-info strong {
-            color: #0c5460;
-        }
-        
-        /* IMPROVED LEGEND - Collapsible and better positioned */
-        .legend {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            z-index: 1000;
-            max-width: 280px;
-        }
-        .legend-header {
-            background: #2c5f2d;
-            color: white;
-            padding: 12px 15px;
-            border-radius: 8px 8px 0 0;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            user-select: none;
-        }
-        .legend-header:hover {
-            background: #234d24;
-        }
-        .legend-header h4 {
-            margin: 0;
-            font-size: 15px;
-        }
-        .legend-toggle {
-            font-size: 18px;
-            transition: transform 0.3s;
-        }
-        .legend-toggle.collapsed {
-            transform: rotate(180deg);
-        }
-        .legend-content {
-            padding: 15px;
-            max-height: 400px;
-            overflow-y: auto;
-            transition: all 0.3s;
-        }
-        .legend-content.hidden {
-            display: none;
-        }
-        .legend-content p {
-            margin: 8px 0;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-        .legend-content strong {
-            color: #2c5f2d;
-        }
-        
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 20px;
-            color: #2c5f2d;
-            z-index: 9999;
-            background: white;
-            padding: 20px 40px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        
-        .species-count {
-            background: #4CAF50;
-            color: white;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            margin-left: 8px;
-            font-weight: bold;
-        }
-        .toggle-species {
-            margin-top: 10px;
-            width: 100%;
-            background: #FF9800;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.3s;
-        }
-        .toggle-species:hover {
-            background: #F57C00;
-            transform: translateY(-2px);
-        }
-        .species-list-hidden {
-            display: none;
-        }
-        .no-image {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 35px;
-            flex-shrink: 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        /* Mobile responsive */
-        @media (max-width: 768px) {
-            .legend {
-                top: auto;
-                bottom: 10px;
-                right: 10px;
-                max-width: calc(100vw - 20px);
-            }
-            .leaflet-popup-content {
-                width: 300px !important;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div id="loading" class="loading">📍 Chargement de la carte des parcs...</div>
+{% extends "base.html" %}
+
+{% block title %}Carte Interactive - Parcs Nationaux de Tunisie{% endblock %}
+
+{% block extra_css %}
+<style>
+#map {
+    height: calc(100vh - 80px);
+    width: 100%;
+}
+
+.map-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.map-control-btn {
+    background: white;
+    border: none;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    font-size: 1.25rem;
+    color: var(--primary);
+    transition: var(--transition);
+    width: 50px;
+    height: 50px;
+}
+
+.map-control-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.05);
+}
+
+.map-sidebar {
+    position: absolute;
+    top: 0;
+    left: -400px;
+    width: 400px;
+    height: 100%;
+    background: white;
+    box-shadow: var(--shadow-lg);
+    z-index: 999;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+}
+
+.map-sidebar.active {
+    left: 0;
+}
+
+.park-popup {
+    min-width: 250px;
+}
+
+.park-popup h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--primary);
+}
+
+.park-popup-meta {
+    display: flex;
+    gap: 1rem;
+    margin: 0.5rem 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.park-popup-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.distance-info {
+    background: var(--bg-secondary);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+    .map-sidebar {
+        width: 100%;
+        left: -100%;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div style="position: relative;">
+    <!-- Map Container -->
     <div id="map"></div>
     
-    <!-- IMPROVED COLLAPSIBLE LEGEND -->
-    <div class="legend">
-        <div class="legend-header" onclick="toggleLegend()">
-            <h4>🌳 Parcs Nationaux de Tunisie</h4>
-            <span class="legend-toggle" id="legend-toggle">▼</span>
-        </div>
-        <div class="legend-content" id="legend-content">
-            <p><strong>Cliquez sur les marqueurs verts</strong></p>
-            <p>🦌 Faune avec photos</p>
-            <p>🌿 Flore avec photos</p>
-            <p>⚠️ Consignes de sécurité</p>
-            <p>💊 Plantes médicinales</p>
-            <p>🌤️ Météo en temps réel</p>
-            <p>🗺️ Itinéraires GPS</p>
-            <p style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
-                <strong>Astuce:</strong> Cliquez ici pour masquer/afficher cette légende
-            </p>
+    <!-- Map Controls -->
+    <div class="map-controls">
+        <button class="map-control-btn" onclick="toggleSidebar()" title="Liste des parcs">
+            <i class="fas fa-list"></i>
+        </button>
+        <button class="map-control-btn" onclick="locateMe()" title="Ma position">
+            <i class="fas fa-crosshairs"></i>
+        </button>
+        <button class="map-control-btn" onclick="fitAllParks()" title="Voir tous les parcs">
+            <i class="fas fa-expand"></i>
+        </button>
+        <button class="map-control-btn" onclick="toggleClustering()" title="Grouper les marqueurs">
+            <i class="fas fa-layer-group"></i>
+        </button>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="map-sidebar" id="mapSidebar">
+        <div style="padding: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0;"><i class="fas fa-mountain"></i> Parcs Nationaux</h3>
+                <button onclick="toggleSidebar()" style="background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Search -->
+            <div style="margin-bottom: 1rem;">
+                <input type="text" 
+                       id="mapSearch" 
+                       placeholder="Rechercher un parc..."
+                       onkeyup="filterParks(this.value)"
+                       style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
+            </div>
+            
+            <!-- Filter -->
+            <div style="margin-bottom: 1.5rem;">
+                <select id="governorateFilter" 
+                        onchange="filterByGovernorate(this.value)"
+                        style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
+                    <option value="">Tous les gouvernorats</option>
+                </select>
+            </div>
+            
+            <!-- Parks List -->
+            <div id="parksList">
+                <!-- Will be populated dynamically -->
+            </div>
         </div>
     </div>
+</div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // Toggle legend visibility
-        function toggleLegend() {
-            const content = document.getElementById('legend-content');
-            const toggle = document.getElementById('legend-toggle');
-            
-            content.classList.toggle('hidden');
-            toggle.classList.toggle('collapsed');
-        }
+{% endblock %}
 
-        const map = L.map('map').setView([34.5, 9.5], 7);
+{% block extra_js %}
+<script>
+let map;
+let markers = [];
+let allParks = [];
+let userLocation = null;
+let clusteringEnabled = false;
+let markerClusterGroup = null;
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
+// Initialize map
+async function initMap() {
+    // Create map centered on Tunisia
+    map = L.map('map').setView([34.0, 9.5], 7);
+    
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+    
+    // Load parks
+    await loadParks();
+    
+    // Try to get user location
+    tryGetUserLocation();
+}
 
-        const parkIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
+// Load all parks
+async function loadParks() {
+    try {
+        const response = await fetch('/api/parks');
+        allParks = await response.json();
+        
+        // Populate governorate filter
+        populateGovernorateFilter();
+        
+        // Add markers
+        addMarkers(allParks);
+        
+        // Populate sidebar list
+        populateParksList(allParks);
+        
+    } catch (error) {
+        console.error('Error loading parks:', error);
+        appUtils.showNotification('Erreur lors du chargement des parcs', 'error');
+    }
+}
+
+// Add markers to map
+function addMarkers(parks) {
+    // Clear existing markers
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+    
+    parks.forEach(park => {
+        // Custom icon
+        const icon = L.divIcon({
+            html: `<div style="background: var(--primary); color: white; width: 40px; height: 40px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);">
+                <i class="fas fa-tree" style="transform: rotate(45deg); font-size: 1.25rem;"></i>
+            </div>`,
+            className: 'custom-marker',
+            iconSize: [40, 40],
+            iconAnchor: [20, 40]
         });
-
-        const parkSpeciesData = {};
-
-        async function loadSpeciesForPark(parkId) {
-            if (parkSpeciesData[parkId]) {
-                return parkSpeciesData[parkId];
-            }
-            
-            try {
-                const response = await fetch(`/api/parks/${parkId}/species`);
-                const species = await response.json();
-                parkSpeciesData[parkId] = species;
-                return species;
-            } catch (error) {
-                console.error('Error loading species:', error);
-                return [];
-            }
-        }
-
-        function createSpeciesHTML(species) {
-            if (!species || species.length === 0) {
-                return '<p style="color: #666; font-style: italic; text-align: center; padding: 20px;">Aucune espèce documentée pour le moment.</p>';
-            }
-
-            let html = '';
-            
-            const animals = species.filter(s => s.type === 'animal');
-            const plants = species.filter(s => s.type === 'plant');
-
-            if (animals.length > 0) {
-                html += '<h4>🦌 Faune (' + animals.length + ')</h4>';
-                animals.forEach(s => {
-                    const imageHtml = s.image_url 
-                        ? `<img src="${s.image_url}" alt="${s.name}" class="species-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                           <div class="no-image" style="display:none;">🦌</div>`
-                        : `<div class="no-image">🦌</div>`;
-                    
-                    html += `
-                        <div class="species-item animal">
-                            ${imageHtml}
-                            <div class="species-content">
-                                <div class="species-name">${s.name}</div>
-                                <div class="species-scientific">${s.scientific_name}</div>
-                                ${s.safety_guidelines ? `
-                                    <div class="safety-warning">
-                                        <strong>⚠️ Sécurité:</strong> ${s.safety_guidelines.substring(0, 120)}${s.safety_guidelines.length > 120 ? '...' : ''}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
-            if (plants.length > 0) {
-                html += '<h4>🌿 Flore (' + plants.length + ')</h4>';
-                plants.forEach(s => {
-                    const imageHtml = s.image_url 
-                        ? `<img src="${s.image_url}" alt="${s.name}" class="species-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                           <div class="no-image" style="display:none;">🌿</div>`
-                        : `<div class="no-image">🌿</div>`;
-                    
-                    html += `
-                        <div class="species-item plant">
-                            ${imageHtml}
-                            <div class="species-content">
-                                <div class="species-name">${s.name}</div>
-                                <div class="species-scientific">${s.scientific_name}</div>
-                                ${s.medicinal_use ? `
-                                    <div class="medicinal-info">
-                                        <strong>💊 Usage:</strong> ${s.medicinal_use.substring(0, 100)}${s.medicinal_use.length > 100 ? '...' : ''}
-                                    </div>
-                                ` : ''}
-                                ${s.safety_guidelines ? `
-                                    <div class="safety-warning">
-                                        <strong>⚠️ Précautions:</strong> ${s.safety_guidelines.substring(0, 80)}${s.safety_guidelines.length > 80 ? '...' : ''}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
-            return html;
-        }
-
-        function toggleSpecies(parkId, buttonId) {
-            const container = document.getElementById(`species-${parkId}`);
-            const button = document.getElementById(buttonId);
-            
-            if (container.classList.contains('species-list-hidden')) {
-                container.classList.remove('species-list-hidden');
-                button.textContent = '🔼 Masquer la biodiversité';
-            } else {
-                container.classList.add('species-list-hidden');
-                button.textContent = '🔽 Afficher la biodiversité';
-            }
-        }
-
-        fetch('/api/maps/all-parks')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('loading').style.display = 'none';
-                
-                data.parks.forEach(park => {
-                    const marker = L.marker([park.latitude, park.longitude], {
-                        icon: parkIcon
-                    }).addTo(map);
-
-                    let popupContent = `
-                        <div class="park-popup">
-                            <h3>${park.park_name}</h3>
-                            <p class="location">📍 ${park.governorate}</p>
-                            <p class="area">Superficie: ${park.description.match(/\d+[.,]?\d*\s*km/i)?.[0] || 'N/A'}</p>
-                            <p class="description">${park.description}</p>
-                            
-                            <div id="weather-${park.park_id}" class="weather-info">
-                                ⏳ Chargement de la météo...
-                            </div>
-
-                            <button class="toggle-species" id="toggle-btn-${park.park_id}" onclick="toggleSpecies(${park.park_id}, 'toggle-btn-${park.park_id}')">
-                                🔽 Afficher la biodiversité <span class="species-count" id="count-${park.park_id}">...</span>
-                            </button>
-                            
-                            <div id="species-${park.park_id}" class="species-container species-list-hidden">
-                                <p style="text-align: center; color: #666; padding: 20px;">⏳ Chargement des espèces...</p>
-                            </div>
-
-                            <div class="buttons">
-                                <button onclick="window.open('${park.google_maps_url}', '_blank')">
-                                    🗺️ Google Maps
-                                </button>
-                                <button class="directions-btn" onclick="getDirections(${park.latitude}, ${park.longitude})">
-                                    🧭 Itinéraire
-                                </button>
-                            </div>
-                        </div>
-                    `;
-
-                    marker.bindPopup(popupContent, {
-                        maxWidth: 450,
-                        maxHeight: 600,
-                        autoPanPadding: [50, 50]
-                    });
-
-                    marker.on('popupopen', async () => {
-                        // Load weather
-                        fetch(`/api/parks/${park.park_id}/weather`)
-                            .then(res => res.json())
-                            .then(weatherData => {
-                                const weather = weatherData.weather;
-                                document.getElementById(`weather-${park.park_id}`).innerHTML = `
-                                    <strong>🌤️ Météo:</strong> ${weather.temperature}°C, ${weather.description}<br>
-                                    <strong>💨 Vent:</strong> ${weather.wind_speed} km/h | 
-                                    <strong>💧 Humidité:</strong> ${weather.humidity}%
-                                `;
-                            })
-                            .catch(() => {
-                                document.getElementById(`weather-${park.park_id}`).innerHTML = 
-                                    '⚠️ Météo non disponible';
-                            });
-
-                        // Load species
-                        const species = await loadSpeciesForPark(park.park_id);
-                        const speciesContainer = document.getElementById(`species-${park.park_id}`);
-                        const countBadge = document.getElementById(`count-${park.park_id}`);
-                        
-                        if (species && species.length > 0) {
-                            speciesContainer.innerHTML = createSpeciesHTML(species);
-                            countBadge.textContent = species.length;
-                        } else {
-                            speciesContainer.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">Aucune espèce documentée</p>';
-                            countBadge.textContent = '0';
-                        }
-                    });
-                });
-            })
-            .catch(error => {
-                console.error('Error loading parks:', error);
-                document.getElementById('loading').innerHTML = '❌ Erreur de chargement';
+        
+        // Create marker
+        const marker = L.marker([park.latitude, park.longitude], { icon })
+            .bindPopup(createPopupContent(park), {
+                maxWidth: 300,
+                className: 'park-popup'
             });
+        
+        marker.parkData = park;
+        markers.push(marker);
+        marker.addTo(map);
+        
+        // Add click event
+        marker.on('click', () => {
+            highlightParkInList(park.id);
+        });
+    });
+}
 
-        function getDirections(destLat, destLng) {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const url = `https://www.google.com/maps/dir/?api=1&origin=${position.coords.latitude},${position.coords.longitude}&destination=${destLat},${destLng}&travelmode=driving`;
-                        window.open(url, '_blank');
-                    },
-                    () => {
-                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}`, '_blank');
-                    }
-                );
-            } else {
-                window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}`, '_blank');
-            }
+// Create popup content
+function createPopupContent(park) {
+    const distance = userLocation 
+        ? appUtils.calculateDistance(
+            userLocation.lat, 
+            userLocation.lng, 
+            park.latitude, 
+            park.longitude
+        ).toFixed(1)
+        : null;
+    
+    return `
+        <div class="park-popup">
+            <h4>${park.name}</h4>
+            <div class="park-popup-meta">
+                <span><i class="fas fa-map-marker-alt"></i> ${park.governorate}</span>
+                <span><i class="fas fa-ruler-combined"></i> ${park.area_km2} km²</span>
+            </div>
+            ${distance ? `
+                <div class="distance-info">
+                    <i class="fas fa-route"></i> À ${distance} km de votre position
+                </div>
+            ` : ''}
+            <p style="margin: 0.75rem 0; color: var(--text-secondary); font-size: 0.875rem;">
+                ${park.description.substring(0, 100)}...
+            </p>
+            <div class="park-popup-actions">
+                <button onclick="goToPark(${park.id})" class="btn btn-primary btn-sm">
+                    <i class="fas fa-eye"></i> Voir
+                </button>
+                <button onclick="getDirectionsToPark(${park.latitude}, ${park.longitude})" class="btn btn-outline btn-sm">
+                    <i class="fas fa-directions"></i> Itinéraire
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Populate governorate filter
+function populateGovernorateFilter() {
+    const governorates = [...new Set(allParks.map(p => p.governorate))].sort();
+    const select = document.getElementById('governorateFilter');
+    
+    governorates.forEach(gov => {
+        const option = document.createElement('option');
+        option.value = gov;
+        option.textContent = gov;
+        select.appendChild(option);
+    });
+}
+
+// Populate parks list in sidebar
+function populateParksList(parks) {
+    const container = document.getElementById('parksList');
+    
+    if (parks.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Aucun parc trouvé</p>';
+        return;
+    }
+    
+    container.innerHTML = parks.map(park => {
+        const distance = userLocation 
+            ? appUtils.calculateDistance(
+                userLocation.lat, 
+                userLocation.lng, 
+                park.latitude, 
+                park.longitude
+            ).toFixed(1)
+            : null;
+        
+        return `
+            <div class="card hover-lift" 
+                 id="park-list-${park.id}"
+                 onclick="focusPark(${park.id})" 
+                 style="margin-bottom: 1rem; cursor: pointer;">
+                <div class="card-content">
+                    <h4 style="margin-bottom: 0.5rem;">${park.name}</h4>
+                    <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                        <i class="fas fa-map-marker-alt"></i> ${park.governorate}
+                        ${distance ? `<span style="margin-left: 0.5rem;"><i class="fas fa-route"></i> ${distance} km</span>` : ''}
+                    </p>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button onclick="event.stopPropagation(); goToPark(${park.id})" class="btn btn-primary btn-sm">
+                            Voir
+                        </button>
+                        <button onclick="event.stopPropagation(); getDirectionsToPark(${park.latitude}, ${park.longitude})" class="btn btn-outline btn-sm">
+                            <i class="fas fa-directions"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Focus on a specific park
+function focusPark(parkId) {
+    const park = allParks.find(p => p.id === parkId);
+    if (!park) return;
+    
+    map.setView([park.latitude, park.longitude], 12);
+    
+    // Find and open marker popup
+    const marker = markers.find(m => m.parkData.id === parkId);
+    if (marker) {
+        marker.openPopup();
+    }
+}
+
+// Highlight park in list
+function highlightParkInList(parkId) {
+    // Remove previous highlights
+    document.querySelectorAll('[id^="park-list-"]').forEach(el => {
+        el.style.borderLeft = 'none';
+    });
+    
+    // Highlight selected
+    const element = document.getElementById(`park-list-${parkId}`);
+    if (element) {
+        element.style.borderLeft = '4px solid var(--primary)';
+        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+// Filter parks by search
+function filterParks(searchTerm) {
+    const filtered = allParks.filter(park => 
+        park.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        park.governorate.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        park.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    addMarkers(filtered);
+    populateParksList(filtered);
+}
+
+// Filter by governorate
+function filterByGovernorate(governorate) {
+    const filtered = governorate 
+        ? allParks.filter(p => p.governorate === governorate)
+        : allParks;
+    
+    addMarkers(filtered);
+    populateParksList(filtered);
+    
+    // Fit bounds to filtered parks
+    if (filtered.length > 0) {
+        const bounds = L.latLngBounds(filtered.map(p => [p.latitude, p.longitude]));
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }
+}
+
+// Toggle sidebar
+function toggleSidebar() {
+    document.getElementById('mapSidebar').classList.toggle('active');
+}
+
+// Fit all parks
+function fitAllParks() {
+    if (markers.length > 0) {
+        const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }
+}
+
+// Locate user
+async function locateMe() {
+    try {
+        const location = await appUtils.getCurrentLocation();
+        userLocation = location;
+        
+        // Add user marker
+        if (window.userMarker) {
+            map.removeLayer(window.userMarker);
         }
+        
+        const userIcon = L.divIcon({
+            html: '<div style="background: #4895ef; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: var(--shadow-md);"><i class="fas fa-user"></i></div>',
+            className: 'user-marker',
+            iconSize: [30, 30]
+        });
+        
+        window.userMarker = L.marker([location.lat, location.lng], { icon: userIcon })
+            .bindPopup('Vous êtes ici')
+            .addTo(map);
+        
+        map.setView([location.lat, location.lng], 9);
+        
+        // Update popups with distances
+        markers.forEach(marker => {
+            marker.setPopupContent(createPopupContent(marker.parkData));
+        });
+        
+        // Update list
+        populateParksList(allParks);
+        
+        appUtils.showNotification('Position trouvée!', 'success');
+        
+    } catch (error) {
+        console.error('Geolocation error:', error);
+        appUtils.showNotification('Impossible d\'obtenir votre position', 'error');
+    }
+}
 
-        // Add user location marker
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                const userIcon = L.icon({
-                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34],
-                    shadowSize: [41, 41]
-                });
+// Try to get user location on load
+function tryGetUserLocation() {
+    navigator.geolocation?.getCurrentPosition(
+        position => {
+            userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            populateParksList(allParks);
+        },
+        () => {} // Fail silently
+    );
+}
 
-                L.marker([position.coords.latitude, position.coords.longitude], {
-                    icon: userIcon
-                }).addTo(map)
-                  .bindPopup('<strong>📍 Votre Position</strong>');
-            });
-        }
-    </script>
-</body>
-</html>
+// Toggle clustering
+function toggleClustering() {
+    clusteringEnabled = !clusteringEnabled;
+    
+    if (clusteringEnabled) {
+        appUtils.showNotification('Clustering activé', 'info');
+        // Note: Requires leaflet.markercluster plugin
+    } else {
+        appUtils.showNotification('Clustering désactivé', 'info');
+    }
+}
+
+// Navigate to park page
+function goToPark(parkId) {
+    window.location.href = `/parks/${parkId}`;
+}
+
+// Get directions
+function getDirectionsToPark(lat, lng) {
+    if (userLocation) {
+        window.open(
+            `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${lat},${lng}`,
+            '_blank'
+        );
+    } else {
+        window.open(
+            `https://www.google.com/maps?q=${lat},${lng}`,
+            '_blank'
+        );
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', initMap);
+</script>
+{% endblock %}

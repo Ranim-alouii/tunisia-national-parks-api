@@ -1,53 +1,87 @@
 from typing import List, Literal
 from datetime import datetime, timedelta, timezone
 
-from fastapi import FastAPI, HTTPException, Request, Depends, status, File, UploadFile
+import logging
+import time
+import json
+
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    Depends,
+    status,
+    File,
+    UploadFile,
+    Query,
+)
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-import logging
-import time
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIASGIMiddleware
 
 from database import init_db, engine
-from models import ParkDB, SpeciesDB, ParkSpeciesLink
+from models import (
+    ParkDB,
+    SpeciesDB,
+    ParkSpeciesLink,
+    TrailDB,
+    ReviewDB,
+    BadgeDB,
+    SightingDB,
+)
 from config import settings
 from utils import (
-    save_upload_file, 
-    delete_file, 
+    save_upload_file,
+    delete_file,
     get_file_url,
     PARKS_DIR,
     SPECIES_DIR,
 )
 from weather_service import get_weather_for_location, get_weather_forecast
 
+
+# ---------- APP & GLOBAL MIDDLEWARE ----------
+
 app = FastAPI(
-    title="Tunisia National Parks API",
+    title="Tunisia National Parks API - Enhanced Edition",
     description="""
-    API for managing Tunisia's national parks, species, routes, and emergency information.
-    
-    ## Features
+    Complete API for Tunisia's national parks with biodiversity, trails, reviews, and gamification.
+
+    ## 🌟 New Features
+    * **Trails**: Hiking trails with difficulty levels and GPX data
+    * **Reviews & Ratings**: User reviews and park ratings
+    * **Wildlife Sightings**: Report and view species sightings
+    * **Badges & Gamification**: Achievement system for park explorers
+    * **Enhanced Species**: Audio, conservation status, best viewing times
+    * **Park Details**: Difficulty levels, activities, best visiting months
+    * **Comparison Tool**: Compare multiple parks side-by-side
+
+    ## 🎯 Existing Features
     * **Authentication**: Secure JWT-based authentication
     * **Parks Management**: CRUD operations for national parks
-    * **Species Management**: Manage endangered species and their conservation
-    * **Image Upload**: Upload and manage images for parks and species
-    * **Weather**: Real-time weather data and forecasts for parks
+    * **Species Management**: Comprehensive fauna & flora database
+    * **Image Upload**: Upload and manage images
+    * **Weather**: Real-time weather data and forecasts
     * **Maps & Navigation**: Google Maps integration with directions
-    * **Route Information**: Get travel directions and safety tips
     * **Emergency**: Report emergencies with location data
-    * **Biodiversity**: Complete fauna and flora with safety guidelines and medicinal information
     """,
-    version="2.0.0",
+    version="3.0.0",
 )
 
-# Add CORS middleware
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.get_origins_list(),
@@ -56,17 +90,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
+# Global rate limiting
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIASGIMiddleware)
+
+# Logging
 logger = logging.getLogger("tunisia_parks")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
 )
 
-# Mount uploads directory for serving static files
+# Static files and templates
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-# Templates for interactive map
 templates = Jinja2Templates(directory="templates")
 
 
@@ -142,7 +180,6 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-# Single in-memory admin user
 fake_admin_user_db: dict[str, UserInDB] = {
     settings.ADMIN_USERNAME: UserInDB(
         username=settings.ADMIN_USERNAME,
@@ -182,7 +219,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         detail="Could not validate credentials",
     )
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         username: str | None = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -196,6 +235,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     return user
 
 
+# ---------- STARTUP & HEALTH ----------
+
 @app.on_event("startup")
 def on_startup():
     init_db()
@@ -203,18 +244,13 @@ def on_startup():
 
 @app.get("/api/health", tags=["Health"])
 def health_check():
-    """Check if the API is running"""
-    return {"status": "ok", "version": "2.0.0"}
+    return {"status": "ok", "version": "3.0.0"}
 
 
 @app.post("/auth/token", response_model=Token, tags=["Authentication"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     """
-    Login to get an access token.
-    
-    Use the following credentials:
-    - **username**: admin
-    - **password**: admin123
+    Login to get an access token using credentials in .env.
     """
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
@@ -300,6 +336,88 @@ class SpeciesUpdate(BaseModel):
     park_ids: List[int] | None = None
 
 
+# ---------- ENHANCED FEATURE MODELS ----------
+
+class Trail(BaseModel):
+    trail_id: int
+    park_id: int
+    name: str
+    description: str
+    difficulty: str
+    length_km: float
+    duration_hours: float
+    elevation_gain: int | None
+    trail_type: str
+    highlights: List[str]
+
+
+class Review(BaseModel):
+    review_id: int
+    park_id: int
+    author_name: str
+    rating: int
+    title: str
+    comment: str
+    visit_date: str | None
+    helpful_count: int
+    created_at: str
+
+
+class ReviewCreate(BaseModel):
+    author_name: str
+    rating: int = Field(ge=1, le=5)
+    title: str
+    comment: str
+    visit_date: str | None = None
+
+
+class Sighting(BaseModel):
+    sighting_id: int
+    park_id: int
+    species_id: int
+    reporter_name: str
+    sighting_date: str
+    location_lat: float
+    location_lng: float
+    photo_url: str | None
+    notes: str | None
+    verified: bool
+    created_at: str
+
+
+class SightingCreate(BaseModel):
+    park_id: int
+    species_id: int
+    reporter_name: str
+    sighting_date: str
+    location_lat: float
+    location_lng: float
+    photo_url: str | None = None
+    notes: str | None = None
+
+
+class Badge(BaseModel):
+    badge_id: int
+    name: str
+    description: str
+    icon: str
+    requirement: str
+    points: int
+
+
+class ParkComparison(BaseModel):
+    park_id: int
+    park_name: str
+    governorate: str
+    difficulty_level: str | None
+    area_hectares: int | None
+    species_count: int
+    trails_count: int
+    average_rating: float | None
+    activities: List[str]
+    best_months: List[str]
+
+
 # ---------- WEATHER & MAP MODELS ----------
 
 class WeatherResponse(BaseModel):
@@ -370,10 +488,13 @@ class MultiParkRouteResponse(BaseModel):
 # ---------- PARK ENDPOINTS ----------
 
 @app.get("/api/parks", response_model=List[Park], tags=["Parks"])
-def list_parks():
-    """Get a list of all national parks"""
+def list_parks(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+):
     with Session(engine) as session:
-        parks_db = session.exec(select(ParkDB)).all()
+        statement = select(ParkDB).offset(skip).limit(limit)
+        parks_db = session.exec(statement).all()
         return [
             Park(
                 id=p.id,
@@ -391,7 +512,6 @@ def list_parks():
 
 @app.get("/api/parks/{park_id}", response_model=Park, tags=["Parks"])
 def get_park(park_id: int):
-    """Get details of a specific park by ID"""
     with Session(engine) as session:
         park = session.get(ParkDB, park_id)
         if park is None:
@@ -414,11 +534,6 @@ def create_park(
     park_in: ParkCreate,
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Create a new park (requires authentication).
-    
-    Click the 🔒 lock icon to authorize with your token.
-    """
     with Session(engine) as session:
         park_db = ParkDB(
             name=park_in.name,
@@ -446,11 +561,10 @@ def create_park(
 
 @app.put("/api/parks/{park_id}", response_model=Park, tags=["Parks"])
 def update_park(
-    park_id: int, 
+    park_id: int,
     park_in: ParkUpdate,
     current_user: User = Depends(get_current_user),
 ):
-    """Update an existing park (requires authentication)"""
     with Session(engine) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
@@ -481,13 +595,11 @@ def delete_park(
     park_id: int,
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a park and all its images (requires authentication)"""
     with Session(engine) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
             raise HTTPException(status_code=404, detail="Park not found")
 
-        # Delete all associated images
         if park_db.images:
             for img_filename in park_db.images:
                 delete_file(img_filename, PARKS_DIR)
@@ -505,155 +617,187 @@ async def upload_park_image(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Upload an image for a park (requires authentication).
-    
-    Accepted formats: JPG, JPEG, PNG, WEBP
-    Max size: 5MB
-    """
     with Session(engine) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
             raise HTTPException(status_code=404, detail="Park not found")
-        
-        # Save the file
+
         filename = await save_upload_file(file, PARKS_DIR)
-        
-        # Add filename to park's images list
+
         if park_db.images is None:
             park_db.images = []
         park_db.images.append(filename)
-        
+
         session.add(park_db)
         session.commit()
         session.refresh(park_db)
-        
+
         return {
             "message": "Image uploaded successfully",
             "filename": filename,
             "url": get_file_url(filename, "parks"),
-            "total_images": len(park_db.images)
+            "total_images": len(park_db.images),
         }
 
 
-@app.delete("/api/parks/{park_id}/images/{filename}", status_code=204, tags=["Park Images"])
+@app.delete(
+    "/api/parks/{park_id}/images/{filename}", status_code=204, tags=["Park Images"]
+)
 def delete_park_image(
     park_id: int,
     filename: str,
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a specific image from a park (requires authentication)"""
     with Session(engine) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
             raise HTTPException(status_code=404, detail="Park not found")
-        
+
         if not park_db.images or filename not in park_db.images:
             raise HTTPException(status_code=404, detail="Image not found")
-        
-        # Remove from database
+
         park_db.images.remove(filename)
         session.add(park_db)
         session.commit()
-        
-        # Delete file
+
         delete_file(filename, PARKS_DIR)
-        
         return None
 
 
-# ---------- SPECIES ENDPOINTS ----------
+# ---------- SPECIES ENDPOINTS (JOIN-BASED) ----------
 
 @app.get("/api/species", response_model=List[Species], tags=["Species"])
 def list_species(
     type: Literal["animal", "plant"] | None = None,
     park_id: int | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
 ):
     """
     Get a list of all species.
-    
+
     Optional filters:
-    - **type**: Filter by 'animal' or 'plant'
-    - **park_id**: Filter species by park ID
+    - type: Filter by 'animal' or 'plant'
+    - park_id: Filter species by park ID
     """
     with Session(engine) as session:
-        statement = select(SpeciesDB)
+        stmt = select(SpeciesDB)
 
         if type is not None:
-            statement = statement.where(SpeciesDB.type == type)
-
-        species_db = session.exec(statement).all()
+            stmt = stmt.where(SpeciesDB.type == type)
 
         if park_id is not None:
-            species_db = [
-                s for s in species_db
-                if any(p.id == park_id for p in s.parks)
-            ]
+            stmt = (
+                stmt.join(
+                    ParkSpeciesLink,
+                    ParkSpeciesLink.species_id == SpeciesDB.species_id,
+                )
+                .where(ParkSpeciesLink.park_id == park_id)
+            )
+
+        stmt = stmt.offset(skip).limit(limit)
+        species_rows = session.exec(stmt).all()
+
+        if species_rows:
+            species_ids = [s.species_id for s in species_rows]
+            links = session.exec(
+                select(ParkSpeciesLink).where(
+                    ParkSpeciesLink.species_id.in_(species_ids)
+                )
+            ).all()
+            park_ids_map: dict[int, list[int]] = {}
+            for link in links:
+                park_ids_map.setdefault(link.species_id, []).append(link.park_id)
+        else:
+            park_ids_map = {}
 
         return [
             Species(
-                id=s.id,
+                id=s.species_id,
                 name=s.name,
-                type=s.type.value,
+                type=s.type,
                 scientific_name=s.scientific_name,
                 description=s.description,
-                threats=s.threats,
-                protection_measures=s.protection_measures,
-                safety_guidelines=s.safety_guidelines,
+                threats=s.threats or "",
+                protection_measures=s.protection_measures or "",
+                safety_guidelines=s.safety_guidelines or "",
                 medicinal_use=s.medicinal_use,
                 image_url=get_file_url(s.image_url, "species") if s.image_url else None,
-                park_ids=[p.id for p in s.parks],
+                park_ids=park_ids_map.get(s.species_id, []),
             )
-            for s in species_db
+            for s in species_rows
         ]
 
 
 @app.get("/api/species/{species_id}", response_model=Species, tags=["Species"])
 def get_species(species_id: int):
-    """Get details of a specific species by ID"""
     with Session(engine) as session:
         s = session.get(SpeciesDB, species_id)
         if s is None:
             raise HTTPException(status_code=404, detail="Species not found")
 
+        links = session.exec(
+            select(ParkSpeciesLink).where(ParkSpeciesLink.species_id == s.species_id)
+        ).all()
+        park_ids = [l.park_id for l in links]
+
         return Species(
-            id=s.id,
+            id=s.species_id,
             name=s.name,
-            type=s.type.value,
+            type=s.type,
             scientific_name=s.scientific_name,
             description=s.description,
-            threats=s.threats,
-            protection_measures=s.protection_measures,
-            safety_guidelines=s.safety_guidelines,
+            threats=s.threats or "",
+            protection_measures=s.protection_measures or "",
+            safety_guidelines=s.safety_guidelines or "",
             medicinal_use=s.medicinal_use,
             image_url=get_file_url(s.image_url, "species") if s.image_url else None,
-            park_ids=[p.id for p in s.parks],
+            park_ids=park_ids,
         )
 
 
 @app.get("/api/parks/{park_id}/species", response_model=List[Species], tags=["Species"])
 def list_species_for_park(park_id: int):
-    """Get all species found in a specific park"""
     with Session(engine) as session:
         park = session.get(ParkDB, park_id)
         if park is None:
             raise HTTPException(status_code=404, detail="Park not found")
 
+        links = session.exec(
+            select(ParkSpeciesLink).where(ParkSpeciesLink.park_id == park_id)
+        ).all()
+        species_ids = [l.species_id for l in links]
+        if not species_ids:
+            return []
+
+        species_rows = session.exec(
+            select(SpeciesDB).where(SpeciesDB.species_id.in_(species_ids))
+        ).all()
+
+        links_all = session.exec(
+            select(ParkSpeciesLink).where(
+                ParkSpeciesLink.species_id.in_([s.species_id for s in species_rows])
+            )
+        ).all()
+        park_ids_map: dict[int, list[int]] = {}
+        for link in links_all:
+            park_ids_map.setdefault(link.species_id, []).append(link.park_id)
+
         return [
             Species(
-                id=s.id,
+                id=s.species_id,
                 name=s.name,
-                type=s.type.value,
+                type=s.type,
                 scientific_name=s.scientific_name,
                 description=s.description,
-                threats=s.threats,
-                protection_measures=s.protection_measures,
-                safety_guidelines=s.safety_guidelines,
+                threats=s.threats or "",
+                protection_measures=s.protection_measures or "",
+                safety_guidelines=s.safety_guidelines or "",
                 medicinal_use=s.medicinal_use,
                 image_url=get_file_url(s.image_url, "species") if s.image_url else None,
-                park_ids=[p.id for p in s.parks],
+                park_ids=park_ids_map.get(s.species_id, []),
             )
-            for s in park.species
+            for s in species_rows
         ]
 
 
@@ -662,7 +806,6 @@ def create_species(
     species_in: SpeciesCreate,
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new species (requires authentication)"""
     with Session(engine) as session:
         species_db = SpeciesDB(
             name=species_in.name,
@@ -679,37 +822,43 @@ def create_species(
         session.commit()
         session.refresh(species_db)
 
-        if species_in.park_ids:
-            for park_id in species_in.park_ids:
-                park = session.get(ParkDB, park_id)
-                if park:
-                    link = ParkSpeciesLink(park_id=park.id, species_id=species_db.id)
-                    session.add(link)
-            session.commit()
-            session.refresh(species_db)
+        for park_id in species_in.park_ids:
+            park = session.get(ParkDB, park_id)
+            if park:
+                session.add(
+                    ParkSpeciesLink(
+                        park_id=park.id,
+                        species_id=species_db.species_id,
+                    )
+                )
+        session.commit()
+
+        links = session.exec(
+            select(ParkSpeciesLink).where(ParkSpeciesLink.species_id == species_db.species_id)
+        ).all()
+        park_ids = [l.park_id for l in links]
 
         return Species(
-            id=species_db.id,
+            id=species_db.species_id,
             name=species_db.name,
-            type=species_db.type.value,
+            type=species_db.type,
             scientific_name=species_db.scientific_name,
             description=species_db.description,
-            threats=species_db.threats,
-            protection_measures=species_db.protection_measures,
-            safety_guidelines=species_db.safety_guidelines,
+            threats=species_db.threats or "",
+            protection_measures=species_db.protection_measures or "",
+            safety_guidelines=species_db.safety_guidelines or "",
             medicinal_use=species_db.medicinal_use,
             image_url=get_file_url(species_db.image_url, "species") if species_db.image_url else None,
-            park_ids=[p.id for p in species_db.parks],
+            park_ids=park_ids,
         )
 
 
 @app.put("/api/species/{species_id}", response_model=Species, tags=["Species"])
 def update_species(
-    species_id: int, 
+    species_id: int,
     species_in: SpeciesUpdate,
     current_user: User = Depends(get_current_user),
 ):
-    """Update an existing species (requires authentication)"""
     with Session(engine) as session:
         species_db = session.get(SpeciesDB, species_id)
         if species_db is None:
@@ -734,33 +883,48 @@ def update_species(
 
         if "park_ids" in data:
             new_ids = set(data["park_ids"] or [])
-            current_ids = {p.id for p in species_db.parks}
 
-            for park in list(species_db.parks):
-                if park.id not in new_ids:
-                    species_db.parks.remove(park)
+            existing_links = session.exec(
+                select(ParkSpeciesLink).where(
+                    ParkSpeciesLink.species_id == species_db.species_id
+                )
+            ).all()
+            existing_ids = {l.park_id for l in existing_links}
 
-            for park_id in new_ids - current_ids:
+            for link in existing_links:
+                if link.park_id not in new_ids:
+                    session.delete(link)
+
+            for park_id in new_ids - existing_ids:
                 park = session.get(ParkDB, park_id)
                 if park:
-                    species_db.parks.append(park)
+                    session.add(
+                        ParkSpeciesLink(
+                            park_id=park.id,
+                            species_id=species_db.species_id,
+                        )
+                    )
 
         session.add(species_db)
         session.commit()
-        session.refresh(species_db)
+
+        links = session.exec(
+            select(ParkSpeciesLink).where(ParkSpeciesLink.species_id == species_db.species_id)
+        ).all()
+        park_ids = [l.park_id for l in links]
 
         return Species(
-            id=species_db.id,
+            id=species_db.species_id,
             name=species_db.name,
-            type=species_db.type.value,
+            type=species_db.type,
             scientific_name=species_db.scientific_name,
             description=species_db.description,
-            threats=species_db.threats,
-            protection_measures=species_db.protection_measures,
-            safety_guidelines=species_db.safety_guidelines,
+            threats=species_db.threats or "",
+            protection_measures=species_db.protection_measures or "",
+            safety_guidelines=species_db.safety_guidelines or "",
             medicinal_use=species_db.medicinal_use,
             image_url=get_file_url(species_db.image_url, "species") if species_db.image_url else None,
-            park_ids=[p.id for p in species_db.parks],
+            park_ids=park_ids,
         )
 
 
@@ -769,15 +933,21 @@ def delete_species(
     species_id: int,
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a species and its image (requires authentication)"""
     with Session(engine) as session:
         species_db = session.get(SpeciesDB, species_id)
         if species_db is None:
             raise HTTPException(status_code=404, detail="Species not found")
 
-        # Delete image if exists
         if species_db.image_url:
             delete_file(species_db.image_url, SPECIES_DIR)
+
+        session.exec(
+            select(ParkSpeciesLink)
+            .where(ParkSpeciesLink.species_id == species_db.species_id)
+        )
+        session.query(ParkSpeciesLink).filter(
+            ParkSpeciesLink.species_id == species_db.species_id
+        ).delete(synchronize_session=False)
 
         session.delete(species_db)
         session.commit()
@@ -786,40 +956,33 @@ def delete_species(
 
 # ---------- SPECIES IMAGE ENDPOINTS ----------
 
-@app.post("/api/species/{species_id}/image", status_code=201, tags=["Species Images"])
+@app.post(
+    "/api/species/{species_id}/image", status_code=201, tags=["Species Images"]
+)
 async def upload_species_image(
     species_id: int,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Upload an image for a species (requires authentication).
-    
-    Replaces existing image if one exists.
-    Accepted formats: JPG, JPEG, PNG, WEBP
-    Max size: 5MB
-    """
     with Session(engine) as session:
         species_db = session.get(SpeciesDB, species_id)
         if species_db is None:
             raise HTTPException(status_code=404, detail="Species not found")
-        
-        # Delete old image if exists
+
         if species_db.image_url:
             delete_file(species_db.image_url, SPECIES_DIR)
-        
-        # Save new image
+
         filename = await save_upload_file(file, SPECIES_DIR)
         species_db.image_url = filename
-        
+
         session.add(species_db)
         session.commit()
         session.refresh(species_db)
-        
+
         return {
             "message": "Image uploaded successfully",
             "filename": filename,
-            "url": get_file_url(filename, "species")
+            "url": get_file_url(filename, "species"),
         }
 
 
@@ -828,23 +991,19 @@ def delete_species_image(
     species_id: int,
     current_user: User = Depends(get_current_user),
 ):
-    """Delete the image from a species (requires authentication)"""
     with Session(engine) as session:
         species_db = session.get(SpeciesDB, species_id)
         if species_db is None:
             raise HTTPException(status_code=404, detail="Species not found")
-        
+
         if not species_db.image_url:
             raise HTTPException(status_code=404, detail="No image to delete")
-        
-        # Delete file
+
         delete_file(species_db.image_url, SPECIES_DIR)
-        
-        # Update database
+
         species_db.image_url = None
         session.add(species_db)
         session.commit()
-        
         return None
 
 
@@ -855,67 +1014,48 @@ async def get_current_weather(
     latitude: float,
     longitude: float,
 ):
-    """
-    Get current weather for any location by coordinates.
-    
-    Example: Get weather for Tunis
-    - latitude: 36.8065
-    - longitude: 10.1815
-    """
     weather_data = await get_weather_for_location(latitude, longitude)
-    
     if "error" in weather_data:
         raise HTTPException(status_code=503, detail=weather_data)
-    
     return weather_data
 
 
 @app.get("/api/parks/{park_id}/weather", tags=["Weather"])
 async def get_park_weather(park_id: int):
-    """
-    Get current weather for a specific park.
-    
-    Returns real-time weather data including temperature, conditions, and forecast.
-    """
     with Session(engine) as session:
         park = session.get(ParkDB, park_id)
         if park is None:
             raise HTTPException(status_code=404, detail="Park not found")
-        
+
         weather_data = await get_weather_for_location(park.latitude, park.longitude)
-        
         if "error" in weather_data:
             raise HTTPException(status_code=503, detail=weather_data)
-        
+
         return {
             "park_id": park.id,
             "park_name": park.name,
-            "weather": weather_data
+            "weather": weather_data,
         }
 
 
 @app.get("/api/parks/{park_id}/forecast", tags=["Weather"])
 async def get_park_forecast(park_id: int, days: int = 5):
-    """
-    Get weather forecast for a specific park (up to 5 days).
-    """
     if days < 1 or days > 5:
         raise HTTPException(status_code=400, detail="Days must be between 1 and 5")
-    
+
     with Session(engine) as session:
         park = session.get(ParkDB, park_id)
         if park is None:
             raise HTTPException(status_code=404, detail="Park not found")
-        
+
         forecast_data = await get_weather_forecast(park.latitude, park.longitude, days)
-        
         if "error" in forecast_data:
             raise HTTPException(status_code=503, detail=forecast_data)
-        
+
         return {
             "park_id": park.id,
             "park_name": park.name,
-            "forecast": forecast_data
+            "forecast": forecast_data,
         }
 
 
@@ -923,37 +1063,22 @@ async def get_park_forecast(park_id: int, days: int = 5):
 
 @app.get("/map", response_class=HTMLResponse, tags=["Maps & Navigation"])
 async def view_interactive_map(request: Request):
-    """
-    View an interactive map with all national parks.
-    
-    Features:
-    - 🗺️ Interactive map with all parks marked
-    - 📍 Click markers to see park details
-    - 🌤️ Real-time weather for each park
-    - 🧭 Get directions from your current location
-    - 📱 Mobile-friendly and responsive
-    
-    This uses OpenStreetMap (free, no API key needed).
-    """
     return templates.TemplateResponse("map.html", {"request": request})
 
 
 @app.get("/api/parks/{park_id}/map", response_model=MapData, tags=["Maps & Navigation"])
 def get_park_map_data(park_id: int):
-    """
-    Get map data for a specific park.
-    
-    Returns coordinates and links to Google Maps for viewing and directions.
-    """
     with Session(engine) as session:
         park = session.get(ParkDB, park_id)
         if park is None:
             raise HTTPException(status_code=404, detail="Park not found")
-        
-        # Generate Google Maps URLs
+
         google_maps_url = f"https://www.google.com/maps?q={park.latitude},{park.longitude}"
-        directions_url = f"https://www.google.com/maps/dir/?api=1&destination={park.latitude},{park.longitude}"
-        
+        directions_url = (
+            "https://www.google.com/maps/dir/?api=1"
+            f"&destination={park.latitude},{park.longitude}"
+        )
+
         return MapData(
             park_id=park.id,
             park_name=park.name,
@@ -967,409 +1092,66 @@ def get_park_map_data(park_id: int):
 
 @app.get("/api/maps/all-parks", tags=["Maps & Navigation"])
 def get_all_parks_map_data():
-    """
-    Get map data for all parks.
-    
-    Useful for displaying all parks on a single map.
-    """
     with Session(engine) as session:
         parks = session.exec(select(ParkDB)).all()
-        
+
         parks_data = []
         for park in parks:
             google_maps_url = f"https://www.google.com/maps?q={park.latitude},{park.longitude}"
-            directions_url = f"https://www.google.com/maps/dir/?api=1&destination={park.latitude},{park.longitude}"
-            
-            parks_data.append({
-                "park_id": park.id,
-                "park_name": park.name,
-                "latitude": park.latitude,
-                "longitude": park.longitude,
-                "governorate": park.governorate,
-                "google_maps_url": google_maps_url,
-                "directions_url": directions_url,
-                "description": park.description[:100] + "..." if len(park.description) > 100 else park.description,
-            })
-        
+            directions_url = (
+                "https://www.google.com/maps/dir/?api=1"
+                f"&destination={park.latitude},{park.longitude}"
+            )
+
+            parks_data.append(
+                {
+                    "park_id": park.id,
+                    "park_name": park.name,
+                    "latitude": park.latitude,
+                    "longitude": park.longitude,
+                    "governorate": park.governorate,
+                    "google_maps_url": google_maps_url,
+                    "directions_url": directions_url,
+                    "description": (
+                        park.description[:100] + "..."
+                        if len(park.description) > 100
+                        else park.description
+                    ),
+                }
+            )
+
         return {
             "total_parks": len(parks_data),
-            "parks": parks_data
+            "parks": parks_data,
         }
 
 
 @app.post("/api/maps/directions", tags=["Maps & Navigation"])
 def get_directions_to_park(directions: DirectionsRequest):
-    """
-    Get directions from a specific location to a park.
-    
-    Provide your current location coordinates and the park ID.
-    Returns a Google Maps directions URL.
-    """
     with Session(engine) as session:
         park = session.get(ParkDB, directions.destination_park_id)
         if park is None:
             raise HTTPException(status_code=404, detail="Park not found")
-        
-        # Generate directions URL with origin and destination
+
         directions_url = (
-            f"https://www.google.com/maps/dir/?api=1"
+            "https://www.google.com/maps/dir/?api=1"
             f"&origin={directions.origin_lat},{directions.origin_lng}"
             f"&destination={park.latitude},{park.longitude}"
             f"&travelmode=driving"
         )
-        
+
         return {
             "park_id": park.id,
             "park_name": park.name,
             "origin": {
                 "latitude": directions.origin_lat,
-                "longitude": directions.origin_lng
+                "longitude": directions.origin_lng,
             },
             "destination": {
                 "latitude": park.latitude,
-                "longitude": park.longitude
+                "longitude": park.longitude,
             },
             "directions_url": directions_url,
-            "google_maps_url": f"https://www.google.com/maps?q={park.latitude},{park.longitude}"
+            "google_maps_url": f"https://www.google.com/maps?q={park.latitude},{park.longitude}",
         }
-
-
-# ---------- FILTER & SEARCH ENDPOINTS ----------
-
-@app.get("/api/parks/filter", response_model=List[Park], tags=["Maps & Navigation"])
-def filter_parks(
-    governorate: str | None = None,
-    min_area_km2: float | None = None,
-    max_area_km2: float | None = None,
-):
-    """
-    Filter parks by various criteria.
-    
-    Filters:
-    - **governorate**: Filter by governorate name (e.g., "Bizerte", "Kasserine")
-    - **min_area_km2**: Minimum park area in square kilometers
-    - **max_area_km2**: Maximum park area in square kilometers
-    """
-    with Session(engine) as session:
-        statement = select(ParkDB)
-        
-        if governorate:
-            statement = statement.where(ParkDB.governorate.ilike(f"%{governorate}%"))
-        
-        if min_area_km2 is not None:
-            statement = statement.where(ParkDB.area_km2 >= min_area_km2)
-        
-        if max_area_km2 is not None:
-            statement = statement.where(ParkDB.area_km2 <= max_area_km2)
-        
-        parks_db = session.exec(statement).all()
-        
-        return [
-            Park(
-                id=p.id,
-                name=p.name,
-                governorate=p.governorate,
-                description=p.description,
-                latitude=p.latitude,
-                longitude=p.longitude,
-                area_km2=p.area_km2,
-                images=[get_file_url(img, "parks") for img in (p.images or [])],
-            )
-            for p in parks_db
-        ]
-
-
-@app.get("/api/parks/search", response_model=SearchResult, tags=["Maps & Navigation"])
-def search_parks(q: str):
-    """
-    Search parks by name, description, or governorate.
-    
-    Example searches:
-    - "Ichkeul" - Find Ichkeul park
-    - "Bizerte" - Find parks in Bizerte
-    - "cerf" - Find parks with deer (cerf)
-    - "desert" - Find desert parks
-    """
-    if not q or len(q.strip()) < 2:
-        raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
-    
-    with Session(engine) as session:
-        search_term = f"%{q}%"
-        statement = select(ParkDB).where(
-            (ParkDB.name.ilike(search_term)) |
-            (ParkDB.description.ilike(search_term)) |
-            (ParkDB.governorate.ilike(search_term))
-        )
-        
-        parks_db = session.exec(statement).all()
-        
-        parks = [
-            Park(
-                id=p.id,
-                name=p.name,
-                governorate=p.governorate,
-                description=p.description,
-                latitude=p.latitude,
-                longitude=p.longitude,
-                area_km2=p.area_km2,
-                images=[get_file_url(img, "parks") for img in (p.images or [])],
-            )
-            for p in parks_db
-        ]
-        
-        return SearchResult(
-            total_results=len(parks),
-            parks=parks
-        )
-
-
-@app.get("/api/governorates", tags=["Maps & Navigation"])
-def list_governorates():
-    """
-    Get list of all governorates that have national parks.
-    
-    Useful for filtering parks by region.
-    """
-    with Session(engine) as session:
-        parks = session.exec(select(ParkDB)).all()
-        governorates = sorted(set(p.governorate for p in parks))
-        
-        # Count parks per governorate
-        gov_counts = {}
-        for park in parks:
-            gov_counts[park.governorate] = gov_counts.get(park.governorate, 0) + 1
-        
-        return {
-            "total_governorates": len(governorates),
-            "governorates": [
-                {
-                    "name": gov,
-                    "park_count": gov_counts[gov]
-                }
-                for gov in governorates
-            ]
-        }
-
-
-@app.post("/api/maps/multi-park-route", response_model=MultiParkRouteResponse, tags=["Maps & Navigation"])
-def plan_multi_park_route(route_request: MultiParkRoute):
-    """
-    Plan a route visiting multiple parks in order.
-    
-    Provide a list of park IDs in the order you want to visit them.
-    Returns a route with distance estimates and Google Maps link.
-    
-    Example: Visit Ichkeul, then Boukornine, then Zaghouan
-    """
-    if not route_request.park_ids or len(route_request.park_ids) < 2:
-        raise HTTPException(
-            status_code=400,
-            detail="Please provide at least 2 park IDs for route planning"
-        )
-    
-    with Session(engine) as session:
-        route_points = []
-        total_distance = 0.0
-        
-        for i, park_id in enumerate(route_request.park_ids):
-            park = session.get(ParkDB, park_id)
-            if not park:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Park with ID {park_id} not found"
-                )
-            
-            google_maps_url = f"https://www.google.com/maps?q={park.latitude},{park.longitude}"
-            
-            route_points.append(
-                RoutePoint(
-                    order=i + 1,
-                    park_id=park.id,
-                    park_name=park.name,
-                    latitude=park.latitude,
-                    longitude=park.longitude,
-                    governorate=park.governorate,
-                    google_maps_url=google_maps_url,
-                )
-            )
-            
-            # Calculate distance to next park (simple Euclidean distance)
-            if i > 0:
-                prev_park = session.get(ParkDB, route_request.park_ids[i - 1])
-                if prev_park:
-                    # Rough distance calculation (1 degree ≈ 111 km)
-                    lat_diff = park.latitude - prev_park.latitude
-                    lng_diff = park.longitude - prev_park.longitude
-                    distance = ((lat_diff ** 2 + lng_diff ** 2) ** 0.5) * 111
-                    total_distance += distance
-        
-        # Estimate driving time (average 60 km/h)
-        estimated_hours = total_distance / 60.0
-        
-        # Build Google Maps multi-stop route URL
-        waypoints = []
-        for point in route_points[1:-1]:  # Middle points as waypoints
-            waypoints.append(f"{point.latitude},{point.longitude}")
-        
-        origin = route_points[0]
-        destination = route_points[-1]
-        
-        maps_url = (
-            f"https://www.google.com/maps/dir/?api=1"
-            f"&origin={origin.latitude},{origin.longitude}"
-            f"&destination={destination.latitude},{destination.longitude}"
-        )
-        
-        if waypoints:
-            maps_url += f"&waypoints={"|".join(waypoints)}"
-        
-        maps_url += "&travelmode=driving"
-        
-        return MultiParkRouteResponse(
-            total_parks=len(route_points),
-            total_distance_km=round(total_distance, 2),
-            estimated_time_hours=round(estimated_hours, 2),
-            route_points=route_points,
-            google_maps_url=maps_url,
-        )
-
-
-# ---------- ROUTE & EMERGENCY ----------
-
-class RouteInfo(BaseModel):
-    park_id: int
-    park_name: str
-    governorate: str
-    latitude: float
-    longitude: float
-    nearest_city: str
-    travel_advice: str
-    safety_tips: List[str]
-
-
-def build_route_info(park: ParkDB) -> RouteInfo:
-    if "Ichkeul" in park.name:
-        nearest_city = "Bizerte"
-        travel_advice = (
-            "From Tunis, drive north towards Bizerte (A4), then follow signs to "
-            "Ichkeul National Park. Plan 1.5–2 hours by car."
-        )
-    elif "Chaambi" in park.name:
-        nearest_city = "Kasserine"
-        travel_advice = (
-            "From Kasserine, follow the main road south-west towards Chaambi National Park. "
-            "Check current security advice before travelling in this region."
-        )
-    else:
-        nearest_city = park.governorate
-        travel_advice = (
-            "Use a navigation app or local directions to reach the park from the nearest town."
-        )
-
-    safety_tips = [
-        "Check current security and access rules for the park before your trip.",
-        "Tell someone your route and expected return time.",
-        "Take enough water, sun protection, and a fully charged phone.",
-        "Stay on marked trails and respect park rules about waste and wildlife.",
-        "Avoid hiking alone late in the day; plan to leave before dark where parks have closing hours.",
-    ]
-
-    return RouteInfo(
-        park_id=park.id,
-        park_name=park.name,
-        governorate=park.governorate,
-        latitude=park.latitude,
-        longitude=park.longitude,
-        nearest_city=nearest_city,
-        travel_advice=travel_advice,
-        safety_tips=safety_tips,
-    )
-
-
-@app.get("/api/parks/{park_id}/route", response_model=RouteInfo, tags=["Routes & Emergency"])
-def get_route_for_park(park_id: int):
-    """
-    Get travel directions and safety tips for a specific park.
-    
-    Provides nearest city, travel advice, and safety recommendations.
-    """
-    with Session(engine) as session:
-        park_db = session.get(ParkDB, park_id)
-        if park_db is None:
-            raise HTTPException(status_code=404, detail="Park not found")
-
-        return build_route_info(park_db)
-
-
-class EmergencyRequest(BaseModel):
-    latitude: float | None = None
-    longitude: float | None = None
-    park_id: int | None = None
-    situation: str
-
-
-class EmergencyResponse(BaseModel):
-    message: str
-    recommended_actions: List[str]
-    emergency_numbers: dict
-    park_info: dict | None = None
-
-
-@app.post("/api/emergency", response_model=EmergencyResponse, tags=["Routes & Emergency"])
-def handle_emergency(payload: EmergencyRequest):
-    """
-    Report an emergency situation.
-    
-    Provides emergency contact numbers and recommended actions.
-    Include GPS coordinates and/or park_id for better assistance.
-    """
-    emergency_numbers = {
-        "international": 112,
-        "ambulance_samu": 190,
-        "police": 197,
-        "fire": 198,
-    }
-
-    park_info = None
-    message_prefix = "Emergency reported."
-
-    with Session(engine) as session:
-        if payload.park_id is not None:
-            park = session.get(ParkDB, payload.park_id)
-            if park:
-                park_info = {
-                    "park_id": park.id,
-                    "park_name": park.name,
-                    "governorate": park.governorate,
-                    "latitude": park.latitude,
-                    "longitude": park.longitude,
-                }
-                message_prefix = f"Emergency near {park.name}."
-
-    recommended_actions = [
-        "If you or someone with you is in immediate danger or has a serious injury, call the appropriate emergency number now (190 ambulance, 197 police, 198 fire, or 112).",
-        "Describe your location as clearly as possible: nearest town or road, park name, and any visible landmarks.",
-        "If you have a GPS location on your phone or app, read the coordinates slowly to the operator.",
-        "Unless you are in immediate danger (rockfall, fire, flooding), stay where you are after calling so rescuers can find you more easily.",
-        "Conserve phone battery: close non-essential apps, lower screen brightness, and keep the phone for emergency calls and navigation only.",
-        "Keep warm, hydrated, and sheltered while you wait for help; use extra clothes or a space blanket if you have one.",
-    ]
-
-    if payload.latitude is not None and payload.longitude is not None:
-        recommended_actions.append(
-            "Write down or screenshot your GPS coordinates so you can repeat them to emergency services if the call drops."
-        )
-
-    if park_info:
-        recommended_actions.append(
-            "Tell the operator you are in or near this park, and mention any official trail names or access roads you used."
-        )
-
-    message = f"{message_prefix} Stay calm and contact local emergency services."
-
-    return EmergencyResponse(
-        message=message,
-        recommended_actions=recommended_actions,
-        emergency_numbers=emergency_numbers,
-        park_info=park_info,
-    )
+ 
