@@ -371,6 +371,28 @@ class ReviewCreate(BaseModel):
     visit_date: str | None = None
 
 
+class TrailCreate(BaseModel):
+    park_id: int
+    name: str
+    description: str
+    difficulty: str
+    length_km: float
+    duration_hours: float
+    elevation_gain: int | None = None
+    trail_type: str
+    highlights: List[str] = []
+
+class TrailUpdate(BaseModel):
+    park_id: int | None = None
+    name: str | None = None
+    description: str | None = None
+    difficulty: str | None = None
+    length_km: float | None = None
+    duration_hours: float | None = None
+    elevation_gain: int | None = None
+    trail_type: str | None = None
+    highlights: List[str] | None = None
+
 class Sighting(BaseModel):
     sighting_id: int
     park_id: int
@@ -950,6 +972,158 @@ def delete_species(
         ).delete(synchronize_session=False)
 
         session.delete(species_db)
+        session.commit()
+        return None
+
+
+# ---------- TRAIL ENDPOINTS ----------
+
+@app.get("/api/parks/{park_id}/trails", response_model=List[Trail], tags=["Trails"])
+def list_trails_for_park(park_id: int):
+    """List all trails for a given park."""
+    with Session(engine) as session:
+        park = session.get(ParkDB, park_id)
+        if park is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+
+        trails_db = session.exec(
+            select(TrailDB).where(TrailDB.park_id == park_id)
+        ).all()
+
+        return [
+            Trail(
+                trail_id=t.trail_id,
+                park_id=t.park_id,
+                name=t.name,
+                description=t.description,
+                difficulty=t.difficulty,
+                length_km=t.length_km,
+                duration_hours=t.duration_hours,
+                elevation_gain=t.elevation_gain,
+                trail_type=t.trail_type,
+                highlights=json.loads(t.highlights) if t.highlights else [],
+            )
+            for t in trails_db
+        ]
+
+
+@app.get("/api/trails/{trail_id}", response_model=Trail, tags=["Trails"])
+def get_trail(trail_id: int):
+    """Get details of a specific trail."""
+    with Session(engine) as session:
+        t = session.get(TrailDB, trail_id)
+        if t is None:
+            raise HTTPException(status_code=404, detail="Trail not found")
+
+        return Trail(
+            trail_id=t.trail_id,
+            park_id=t.park_id,
+            name=t.name,
+            description=t.description,
+            difficulty=t.difficulty,
+            length_km=t.length_km,
+            duration_hours=t.duration_hours,
+            elevation_gain=t.elevation_gain,
+            trail_type=t.trail_type,
+            highlights=json.loads(t.highlights) if t.highlights else [],
+        )
+
+
+@app.post("/api/trails", response_model=Trail, status_code=201, tags=["Trails"])
+def create_trail(
+    trail_in: TrailCreate,
+    current_user: User = Depends(get_current_user),
+):
+    """Create a new trail (requires authentication)."""
+    with Session(engine) as session:
+        park = session.get(ParkDB, trail_in.park_id)
+        if park is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+
+        trail_db = TrailDB(
+            park_id=trail_in.park_id,
+            name=trail_in.name,
+            description=trail_in.description,
+            difficulty=trail_in.difficulty,
+            length_km=trail_in.length_km,
+            duration_hours=trail_in.duration_hours,
+            elevation_gain=trail_in.elevation_gain,
+            trail_type=trail_in.trail_type,
+            highlights=json.dumps(trail_in.highlights or []),
+        )
+        session.add(trail_db)
+        session.commit()
+        session.refresh(trail_db)
+
+        return Trail(
+            trail_id=trail_db.trail_id,
+            park_id=trail_db.park_id,
+            name=trail_db.name,
+            description=trail_db.description,
+            difficulty=trail_db.difficulty,
+            length_km=trail_db.length_km,
+            duration_hours=trail_db.duration_hours,
+            elevation_gain=trail_db.elevation_gain,
+            trail_type=trail_db.trail_type,
+            highlights=trail_in.highlights or [],
+        )
+
+
+@app.put("/api/trails/{trail_id}", response_model=Trail, tags=["Trails"])
+def update_trail(
+    trail_id: int,
+    trail_in: TrailUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    """Update an existing trail (requires authentication)."""
+    with Session(engine) as session:
+        trail_db = session.get(TrailDB, trail_id)
+        if trail_db is None:
+            raise HTTPException(status_code=404, detail="Trail not found")
+
+        data = trail_in.model_dump(exclude_unset=True)
+
+        if "park_id" in data:
+            park = session.get(ParkDB, data["park_id"])
+            if park is None:
+                raise HTTPException(status_code=404, detail="Park not found")
+
+        for field, value in data.items():
+            if field == "highlights" and value is not None:
+                setattr(trail_db, "highlights", json.dumps(value))
+            else:
+                setattr(trail_db, field, value)
+
+        session.add(trail_db)
+        session.commit()
+        session.refresh(trail_db)
+
+        return Trail(
+            trail_id=trail_db.trail_id,
+            park_id=trail_db.park_id,
+            name=trail_db.name,
+            description=trail_db.description,
+            difficulty=trail_db.difficulty,
+            length_km=trail_db.length_km,
+            duration_hours=trail_db.duration_hours,
+            elevation_gain=trail_db.elevation_gain,
+            trail_type=trail_db.trail_type,
+            highlights=json.loads(trail_db.highlights) if trail_db.highlights else [],
+        )
+
+
+@app.delete("/api/trails/{trail_id}", status_code=204, tags=["Trails"])
+def delete_trail(
+    trail_id: int,
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a trail (requires authentication)."""
+    with Session(engine) as session:
+        trail_db = session.get(TrailDB, trail_id)
+        if trail_db is None:
+            raise HTTPException(status_code=404, detail="Trail not found")
+
+        session.delete(trail_db)
         session.commit()
         return None
 
