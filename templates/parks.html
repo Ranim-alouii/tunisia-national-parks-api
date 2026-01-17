@@ -280,11 +280,11 @@ function applyFilters() {
     const maxArea = parseFloat(document.getElementById('maxAreaFilter').value) || Infinity;
 
     filteredParks = allParks.filter(park => {
-        // Search filter
+        // Search filter with null-check
         const matchesSearch = !searchTerm ||
-            park.name.toLowerCase().includes(searchTerm) ||
-            park.governorate.toLowerCase().includes(searchTerm) ||
-            park.description.toLowerCase().includes(searchTerm);
+            (park.name && typeof park.name === 'string' && park.name.toLowerCase().includes(searchTerm)) ||
+            (park.governorate && typeof park.governorate === 'string' && park.governorate.toLowerCase().includes(searchTerm)) ||
+            (park.description && typeof park.description === 'string' && park.description.toLowerCase().includes(searchTerm));
 
         // Governorate filter
         const matchesGovernorate = !governorate || park.governorate === governorate;

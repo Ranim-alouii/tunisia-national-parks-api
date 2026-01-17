@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -278,12 +278,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.get("/{path:path}", response_class=HTMLResponse)
-async def catch_all_frontend(path: str, request: Request):
+@app.get("/{full_path:path}")
+async def catch_all_frontend(full_path: str):
     # Serve index.html for all non-API routes to enable SPA routing
-    if path.startswith("api/") or path in ["static", "uploads"]:
+    if full_path.startswith("api/") or full_path in ["static", "uploads"]:
         raise HTTPException(status_code=404, detail="Not found")
-    return templates.TemplateResponse("index.html", {"request": request})
+    return FileResponse("templates/index.html")
 
 # Health check
 @app.get("/api/health")
