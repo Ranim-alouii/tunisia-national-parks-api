@@ -1415,11 +1415,11 @@ class MediaService:
 
 # ---------- STARTUP & HEALTH ----------
 
+# Initialize Prometheus monitoring
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False, should_gzip=True)
+
 @app.on_event("startup")
 def on_startup():
-    # Initialize Prometheus monitoring
-    Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False, should_gzip=True)
-
     init_db()
     # Ensure upload directories exist
     for folder in ["parks", "species", "users", "documents"]:
