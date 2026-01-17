@@ -31,7 +31,7 @@ from pathlib import Path
 from models import ParkDB, TrailDB, ParkSpeciesLink, SpeciesDB, ReviewDB, SightingDB
 from weather_service import get_weather_for_location
 # Import routers
-from routers import parks, species, auth
+from routers import parks, species, trails, auth
 
 # API Documentation Metadata
 tags_metadata = [
@@ -227,6 +227,7 @@ templates = Jinja2Templates(directory="templates")
 # Include routers
 app.include_router(parks.router)
 app.include_router(species.router)
+app.include_router(trails.router)
 app.include_router(auth.router)
 
 # Fallback static file routes

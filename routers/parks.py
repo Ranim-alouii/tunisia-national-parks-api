@@ -147,6 +147,55 @@ def create_park(park_in: ParkCreate):
             images=[],
         )
 
+@router.get("/{park_id}/trails")
+def get_park_trails(park_id: int):
+    """Get all trails for a specific park."""
+    from models import TrailDB
+    from sqlmodel import select
+
+    with Session(get_engine()) as session:
+        # Verify park exists
+        park = session.get(ParkDB, park_id)
+        if park is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+
+        trails_db = session.exec(
+            select(TrailDB).where(TrailDB.park_id == park_id)
+        ).all()
+
+        from typing import List
+        from pydantic import BaseModel
+
+        class Trail(BaseModel):
+            trail_id: int
+            park_id: int
+            name: str
+            description: str
+            difficulty: str
+            length_km: float
+            duration_hours: float
+            elevation_gain: int | None = None
+            trail_type: str
+            surface: str | None = None
+            highlights: List[str] | None = None
+
+        return [
+            {
+                "trail_id": t.trail_id,
+                "park_id": t.park_id,
+                "name": t.name,
+                "description": t.description,
+                "difficulty": t.difficulty,
+                "length_km": t.length_km,
+                "duration_hours": t.duration_hours,
+                "elevation_gain": t.elevation_gain,
+                "trail_type": t.trail_type,
+                "surface": t.surface,
+                "highlights": t.highlights.split(",") if t.highlights else None,
+            }
+            for t in trails_db
+        ]
+
 @router.put("/{park_id}", response_model=Park)
 def update_park(park_id: int, park_in: ParkUpdate):
     """Update an existing park."""
