@@ -166,6 +166,48 @@ async def get_nearby_places(lat: float, lng: float, place_type: str = "restauran
         return []
 
 
+async def get_news_about_parks(query: str = "Tunisia parks nature", count: int = 10) -> List[dict]:
+    """
+    Get news articles about parks and nature from NewsAPI.
+    """
+    if not settings.NEWSAPI_API_KEY:
+        return []
+
+    url = "https://newsapi.org/v2/everything"
+    params = {
+        "q": query,
+        "sortBy": "publishedAt",
+        "pageSize": count,
+        "apiKey": settings.NEWSAPI_API_KEY
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("status") == "ok":
+                    return [
+                        {
+                            "title": article.get("title", ""),
+                            "description": article.get("description", ""),
+                            "url": article.get("url", ""),
+                            "urlToImage": article.get("urlToImage", ""),
+                            "publishedAt": article.get("publishedAt", ""),
+                            "source": article.get("source", {}).get("name", ""),
+                            "author": article.get("author", "")
+                        }
+                        for article in data.get("articles", [])
+                    ]
+                else:
+                    return []
+            else:
+                return []
+    except Exception as e:
+        logger.error(f"NewsAPI error: {e}")
+        return []
+
+
 # ---------- APP & GLOBAL MIDDLEWARE ----------
 
 app = FastAPI(
@@ -1560,3 +1602,23 @@ async def get_nearby_places_for_park(
             "places": places,
             "total_results": len(places)
         }
+
+
+@app.get("/api/news/parks", tags=["Public APIs"])
+async def get_news_about_parks(
+    query: str = Query("Tunisia parks nature", description="Search query for news"),
+    count: int = Query(10, ge=1, le=50, description="Number of articles to retrieve")
+):
+    """
+    Get news articles about parks and nature from NewsAPI.
+
+    - query: Search query for news articles
+    - count: Number of articles to retrieve (1-50, default 10)
+    """
+    news = await get_news_about_parks(query, count)
+
+    return {
+        "query": query,
+        "articles": news,
+        "total_results": len(news)
+    }
