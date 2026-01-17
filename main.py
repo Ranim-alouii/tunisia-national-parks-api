@@ -37,6 +37,7 @@ from database import init_db, engine
 
 # Import routers
 from routers import parks, species, auth
+from routers.auth import get_current_user
 
 # Redis caching (optional - will fallback gracefully if not available)
 try:
@@ -68,6 +69,8 @@ from utils import (
 from weather_service import get_weather_for_location, get_weather_forecast
 
 import httpx
+
+
 
 # Prometheus monitoring
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
@@ -476,26 +479,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return encoded_jwt
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-    )
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        username: str | None = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        token_data = TokenData(username=username)
-    except JWTError:
-        raise credentials_exception
 
-    user = get_user(token_data.username)
-    if user is None or user.disabled:
-        raise credentials_exception
-    return user
 
 
 # ---------- USER MANAGEMENT ----------
@@ -1419,8 +1403,36 @@ class MediaService:
 # Initialize Prometheus monitoring
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False, should_gzip=True)
 
+app = FastAPI(
+    title="Tunisia National Parks API - Enhanced Edition",
+    description="""Complete API for Tunisia's national parks with biodiversity, trails, reviews, and gamification.
+
+## 🌟 New Features
+* **18 National Parks**: Complete database of Tunisia's protected areas
+* **29 Species**: Comprehensive fauna & flora database (16 animals, 13 plants)
+* **Trails**: Hiking trails with difficulty levels and detailed guides
+* **Reviews & Ratings**: User reviews and park ratings
+* **Wildlife Sightings**: Report and view species sightings
+* **Badges & Gamification**: Achievement system for park explorers
+* **Park Comparison**: Side-by-side comparison of multiple parks
+
+## 🎯 Existing Features
+* **Authentication**: Secure JWT-based authentication
+* **Parks Management**: CRUD operations for national parks
+* **Species Management**: Comprehensive fauna & flora database
+* **Image Upload**: Upload and manage images
+* **Weather**: Real-time weather data and forecasts
+* **Maps & Navigation**: Google Maps integration with directions
+* **Emergency**: Report emergencies with location data
+""",
+    version="3.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc"
+)
+
 @app.on_event("startup")
-def on_startup():
+def startup_event():
+    """Initialize database and create upload directories on startup."""
     init_db()
     # Ensure upload directories exist
     for folder in ["parks", "species", "users", "documents"]:
@@ -1674,6 +1686,7 @@ class ParkCreate(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
     area_km2: float = Field(gt=0)
+    google_maps_url: str
 
 
 class ParkUpdate(BaseModel):
@@ -2064,6 +2077,7 @@ def create_park(
             latitude=park_in.latitude,
             longitude=park_in.longitude,
             area_km2=park_in.area_km2,
+            google_maps_url=park_in.google_maps_url,
         )
         session.add(park_db)
         session.commit()
