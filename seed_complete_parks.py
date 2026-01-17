@@ -3,7 +3,7 @@
 #Run with: python seed_complete_parks.py
 
 
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 from database import engine, init_db
 from models import ParkDB, SpeciesDB, ParkSpeciesLink
 from typing import List, Dict
@@ -159,6 +159,7 @@ SPECIES_DATA = [
         "threats": "Chasse illégale, perte d'habitat forestier, fragmentation des populations, maladies transmises par le bétail domestique, dérangement humain pendant la reproduction.",
         "protection_measures": "Programme de réintroduction à El Feija, zones de protection stricte dans les parcs, patrouilles anti-braconnage renforcées, corridors écologiques entre habitats, monitoring GPS des populations, sensibilisation des communautés locales.",
         "safety_guidelines": "Observer à distance minimale de 50 mètres. Ne jamais nourrir les cerfs. Éviter tout contact pendant la saison du rut (septembre-octobre) car les mâles sont agressifs. Rester silencieux pour ne pas les effrayer. Ne jamais s'approcher des faons seuls - la mère est probablement proche. Utiliser des jumelles pour l'observation. Interdiction absolue de chasser ou capturer.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Cervus_elaphus_barbarus.jpg/800px-Cervus_elaphus_barbarus.jpg",
         "parks": ["El Feija", "Oued Zeen"],
     },
     {
@@ -169,6 +170,7 @@ SPECIES_DATA = [
         "threats": "Éteint à l'état sauvage en Afrique. En Tunisie : braconnage persistant, compétition avec le bétail domestique pour les pâturages, sécheresses prolongées, dégradation de l'habitat par surpâturage.",
         "protection_measures": "Programme de réintroduction réussi depuis 1985 avec environ 200 individus dans quatre aires protégées. Surveillance 24h/24 par les gardes forestiers. Clôtures de protection dans certaines zones. Reproduction en captivité comme assurance. Collaboration internationale pour la conservation. Alimentation supplémentaire pendant les sécheresses.",
         "safety_guidelines": "Maintenir une distance de sécurité de 100 mètres. Les oryx peuvent charger s'ils se sentent menacés - leurs cornes sont dangereuses. Ne jamais s'interposer entre un adulte et son petit. Observer depuis un véhicule quand possible. Éviter les mouvements brusques. Ne pas tenter de toucher ou nourrir. En cas de charge, reculer lentement sans courir. Respecter absolument les zones clôturées.",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Scimitar-horned_Oryx%2C_Oryx_dammah.JPG/800px-Scimitar-horned_Oryx%2C_Oryx_dammah.JPG",
         "parks": ["Bouhedma", "Sidi Toui", "Jebil", "Dghoumès"],
     },
     {
@@ -408,6 +410,7 @@ def seed_complete_database():
                 session.delete(species)
             for park in existing_parks:
                 session.delete(park)
+            session.exec(delete(ParkSpeciesLink))
             session.commit()
             print("✓ Database cleared\n")
         

@@ -100,4 +100,6 @@ def delete_file(filename: str, directory: Path) -> None:
 
 def get_file_url(filename: str, file_type: str) -> str:
     """Generate URL for uploaded file."""
+    if filename and filename.startswith("http"):
+        return filename  # External URL
     return f"/uploads/{file_type}/{filename}"

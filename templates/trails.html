@@ -5,62 +5,708 @@
 {% block content %}
 <section class="section">
     <div class="container">
-        <div class="section-header">
-            <h1 class="section-title">Sentiers de Randonnée</h1>
-            <p class="section-subtitle">Explorez les sentiers de tous les parcs</p>
+        <div class="section-header"> 
+            <h1 class="section-title">🗺️ Sentiers de Randonnée</h1>
+             
+            <p class="section-subtitle">Découvrez les plus beaux sentiers de randonnée des parcs nationaux tunisiens</p>
         </div>
 
-        <div id="trailsContainer">
-            <p style="text-align: center;">Chargement des sentiers...</p>
+        <!-- Filters and Search -->
+        <div class="search-filters" style="background: white; border-radius: var(--radius-lg); padding: var(--spacing-lg); margin-bottom: var(--spacing-xl); box-shadow: var(--shadow-md);">
+            <div class="search-bar" style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                <div style="flex: 1; position: relative;">
+                    <input type="text" id="trailSearch" placeholder="Rechercher un sentier..." style="width: 100%; padding: var(--spacing-md) var(--spacing-lg); border: 2px solid var(--bg-tertiary); border-radius: var(--radius-lg); font-size: 1rem; transition: var(--transition);">
+                    <i class="fas fa-search" style="position: absolute; right: var(--spacing-md); top: 50%; transform: translateY(-50%); color: var(--text-tertiary);"></i>
+                </div>
+                <button id="searchBtn" class="btn btn-primary" style="padding: var(--spacing-md) var(--spacing-xl);">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+
+            <div class="filter-tags" style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap;">
+                <button class="filter-tag active" data-difficulty="all">
+                    <i class="fas fa-list"></i> Tous
+                </button>
+                <button class="filter-tag" data-difficulty="facile">
+                    <i class="fas fa-walking"></i> Facile
+                </button>
+                <button class="filter-tag" data-difficulty="moyen">
+                    <i class="fas fa-hiking"></i> Moyen
+                </button>
+                <button class="filter-tag" data-difficulty="difficile">
+                    <i class="fas fa-mountain"></i> Difficile
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--spacing-md); margin-bottom: var(--spacing-xl);">
+            <div class="stat-card" style="background: white; padding: var(--spacing-lg); border-radius: var(--radius-lg); text-align: center; box-shadow: var(--shadow-sm);">
+                <div style="font-size: 2rem; color: var(--tertiary); margin-bottom: var(--spacing-xs);">🗺️</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);" id="totalTrails">0</div>
+                <div style="color: var(--text-secondary);">Sentiers</div>
+            </div>
+            <div class="stat-card" style="background: white; padding: var(--spacing-lg); border-radius: var(--radius-lg); text-align: center; box-shadow: var(--shadow-sm);">
+                <div style="font-size: 2rem; color: var(--success); margin-bottom: var(--spacing-xs);">🕒</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);" id="totalHours">0</div>
+                <div style="color: var(--text-secondary);">Heures Totales</div>
+            </div>
+            <div class="stat-card" style="background: white; padding: var(--spacing-lg); border-radius: var(--radius-lg); text-align: center; box-shadow: var(--shadow-sm);">
+                <div style="font-size: 2rem; color: var(--primary); margin-bottom: var(--spacing-xs);">📏</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);" id="totalDistance">0</div>
+                <div style="color: var(--text-secondary);">Km Parcourus</div>
+            </div>
+            <div class="stat-card" style="background: white; padding: var(--spacing-lg); border-radius: var(--radius-lg); text-align: center; box-shadow: var(--shadow-sm);">
+                <div style="font-size: 2rem; color: var(--accent); margin-bottom: var(--spacing-xs);">🏔️</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);" id="totalElevation">0</div>
+                <div style="color: var(--text-secondary);">M Dénivelé</div>
+            </div>
+        </div>
+
+        <!-- Trails Grid -->
+        <div class="grid grid-3" id="trailsGrid">
+            <!-- Trails will be loaded here -->
+        </div>
+
+        <!-- Load More Button -->
+        <div style="text-align: center; margin-top: var(--spacing-xl);">
+            <button id="loadMoreBtn" class="btn btn-outline" style="display: none;">
+                <i class="fas fa-plus"></i> Charger plus de sentiers
+            </button>
         </div>
     </div>
 </section>
+
+<!-- Trail Detail Modal -->
+<div class="modal-overlay" id="trailModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="trail-header">
+                <div class="trail-title-section">
+                    <div class="trail-icon">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <div>
+                        <h2 class="trail-name" id="modalTrailName">Nom du Sentier</h2>
+                        <p class="trail-subtitle" id="modalTrailPark">Parc National</p>
+                        <div class="trail-badges" id="modalTrailBadges">
+                            <!-- Badges will be populated -->
+                        </div>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeTrailModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="modal-body">
+            <div class="trail-hero">
+                <div class="trail-stats">
+                    <div class="stat-item">
+                        <div class="stat-icon">
+                            <i class="fas fa-route"></i>
+                        </div>
+                        <div class="stat-text">
+                            <div class="stat-value" id="modalDistance">0 km</div>
+                            <div class="stat-label">Distance</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-text">
+                            <div class="stat-value" id="modalDuration">0h</div>
+                            <div class="stat-label">Durée</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">
+                            <i class="fas fa-mountain"></i>
+                        </div>
+                        <div class="stat-text">
+                            <div class="stat-value" id="modalElevation">0m</div>
+                            <div class="stat-label">Dénivelé</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">
+                            <i class="fas fa-shoe-prints"></i>
+                        </div>
+                        <div class="stat-text">
+                            <div class="stat-value" id="modalDifficulty">Facile</div>
+                            <div class="stat-label">Difficulté</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="trail-content">
+                <div class="content-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <h3>Description</h3>
+                    </div>
+                    <p class="section-content" id="modalDescription">Description du sentier...</p>
+                </div>
+
+                <div class="content-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-map-marked-alt"></i>
+                        </div>
+                        <h3>Type de Sentier</h3>
+                    </div>
+                    <p class="section-content" id="modalTrailType">Type de sentier...</p>
+                </div>
+
+                <div class="content-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <h3>Points d'Intérêt</h3>
+                    </div>
+                    <div class="section-content">
+                        <div id="modalHighlights" class="highlights-list">
+                            <!-- Highlights will be populated -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h3>Préparation Requise</h3>
+                    </div>
+                    <div class="section-content" id="modalPreparation">
+                        <!-- Preparation info will be populated -->
+                    </div>
+                </div>
+
+                <div class="content-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h3>Conseils de Sécurité</h3>
+                    </div>
+                    <div class="section-content" id="modalSafety">
+                        <!-- Safety tips will be populated -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeTrailModal()">
+                    <i class="fas fa-times"></i> Fermer
+                </button>
+                <button class="btn btn-primary" onclick="viewOnMap()">
+                    <i class="fas fa-map-marked-alt"></i> Voir sur la Carte
+                </button>
+                <button class="btn btn-secondary" onclick="getDirections()">
+                    <i class="fas fa-directions"></i> Itinéraire
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+let allTrails = [];
+let filteredTrails = [];
+let currentDifficulty = 'all';
+let currentSearch = '';
+
 async function loadTrails() {
     try {
         const response = await fetch('/api/parks');
         const parks = await response.json();
 
-        const container = document.getElementById('trailsContainer');
-        container.innerHTML = '';
+        allTrails = [];
+        const container = document.getElementById('trailsGrid');
 
-        for (const park of parks.slice(0, 5)) { // Limit to first 5 parks for demo
-            const trailsResponse = await fetch(`/api/parks/${park.id}/trails`);
-            const trails = await trailsResponse.json();
+        // Show loading
+        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem;"><div class="spinner"></div><p>Chargement des sentiers...</p></div>';
 
-            if (trails.length > 0) {
-                const parkSection = document.createElement('div');
-                parkSection.innerHTML = `
-                    <h3>${park.name}</h3>
-                    <div class="grid grid-2">
-                        ${trails.map(trail => `
-                            <div class="card">
-                                <div class="card-content">
-                                    <h4>${trail.name}</h4>
-                                    <p>${trail.description}</p>
-                                    <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
-                                        <span><i class="fas fa-route"></i> ${trail.length_km} km</span>
-                                        <span><i class="fas fa-clock"></i> ${trail.duration_hours}h</span>
-                                        <span class="difficulty-badge difficulty-${trail.difficulty}">
-                                            ${trail.difficulty}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-                container.appendChild(parkSection);
+        // Load trails from all parks
+        for (const park of parks) {
+            try {
+                const trailsResponse = await fetch(`/api/parks/${park.id}/trails`);
+                const trails = await trailsResponse.json();
+
+                trails.forEach(trail => {
+                    trail.parkName = park.name;
+                    trail.parkId = park.id;
+                    trail.parkGovernorate = park.governorate;
+                    allTrails.push(trail);
+                });
+            } catch (error) {
+                console.error(`Error loading trails for park ${park.name}:`, error);
             }
         }
+
+        filteredTrails = [...allTrails];
+        updateStats();
+        displayTrails(filteredTrails.slice(0, 12));
+        updateLoadMoreButton();
+
     } catch (error) {
         console.error('Error loading trails:', error);
+        document.getElementById('trailsGrid').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem;"><i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--text-tertiary); margin-bottom: 1rem;"></i><h3 style="color: var(--text-secondary);">Erreur de chargement</h3><p style="color: var(--text-tertiary);">Impossible de charger les sentiers.</p></div>';
     }
 }
 
-document.addEventListener('DOMContentLoaded', loadTrails);
+function updateStats() {
+    const totalTrails = allTrails.length;
+    const totalHours = allTrails.reduce((sum, t) => sum + (t.duration_hours || 0), 0);
+    const totalDistance = allTrails.reduce((sum, t) => sum + (t.length_km || 0), 0);
+    const totalElevation = allTrails.reduce((sum, t) => sum + (t.elevation_gain || 0), 0);
+
+    document.getElementById('totalTrails').textContent = totalTrails;
+    document.getElementById('totalHours').textContent = Math.round(totalHours);
+    document.getElementById('totalDistance').textContent = Math.round(totalDistance);
+    document.getElementById('totalElevation').textContent = Math.round(totalElevation);
+}
+
+function applyFilters() {
+    const searchTerm = currentSearch.toLowerCase();
+
+    filteredTrails = allTrails.filter(trail => {
+        // Search filter
+        const matchesSearch = !searchTerm ||
+            trail.name.toLowerCase().includes(searchTerm) ||
+            trail.description.toLowerCase().includes(searchTerm) ||
+            trail.parkName.toLowerCase().includes(searchTerm);
+
+        // Difficulty filter
+        let matchesDifficulty = true;
+        if (currentDifficulty !== 'all') {
+            matchesDifficulty = trail.difficulty === currentDifficulty;
+        }
+
+        return matchesSearch && matchesDifficulty;
+    });
+
+    displayTrails(filteredTrails.slice(0, 12));
+    updateLoadMoreButton();
+}
+
+function displayTrails(trails) {
+    const container = document.getElementById('trailsGrid');
+    container.innerHTML = '';
+
+    if (trails.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                <i class="fas fa-search" style="font-size: 3rem; color: var(--text-tertiary); margin-bottom: 1rem;"></i>
+                <h3 style="color: var(--text-secondary);">Aucun sentier trouvé</h3>
+                <p style="color: var(--text-tertiary);">Essayez de modifier vos critères de recherche.</p>
+            </div>
+        `;
+        return;
+    }
+
+    trails.forEach(trail => {
+        const card = document.createElement('div');
+        card.className = 'card hover-lift';
+        card.style.cursor = 'pointer';
+        card.onclick = () => showTrailModal(trail);
+
+        const difficultyColor = {
+            'facile': 'success',
+            'moyen': 'warning',
+            'difficile': 'danger'
+        }[trail.difficulty] || 'info';
+
+        card.innerHTML = `
+            <div class="trail-card-header" style="background: linear-gradient(135deg, var(--primary-light), var(--primary)); color: white; padding: var(--spacing-lg); border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-sm);">
+                    <h4 style="margin: 0; font-size: 1.1rem;">${trail.name}</h4>
+                    <span class="badge badge-${difficultyColor}" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                        ${trail.difficulty.charAt(0).toUpperCase() + trail.difficulty.slice(1)}
+                    </span>
+                </div>
+                <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">
+                    <i class="fas fa-map-marker-alt"></i> ${trail.parkName}
+                </p>
+            </div>
+            <div class="card-content">
+                <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md); line-height: 1.5;">
+                    ${trail.description.substring(0, 100)}...
+                </p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm); font-size: 0.875rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-route" style="color: var(--primary);"></i>
+                        <span><strong>${trail.length_km} km</strong></span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-clock" style="color: var(--tertiary);"></i>
+                        <span><strong>${trail.duration_hours}h</strong></span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-mountain" style="color: var(--accent);"></i>
+                        <span><strong>${trail.elevation_gain || 0}m</strong></span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-shoe-prints" style="color: var(--success);"></i>
+                        <span><strong>${trail.trail_type || 'Nature'}</strong></span>
+                    </div>
+                </div>
+                <button onclick="event.stopPropagation(); showTrailModal(trail)" class="btn btn-primary" style="width: 100%; margin-top: var(--spacing-md); cursor: pointer;">
+                    <i class="fas fa-eye"></i> Voir les Détails
+                </button>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+function showTrailModal(trail) {
+    // Populate modal with trail data
+    document.getElementById('modalTrailName').textContent = trail.name;
+    document.getElementById('modalTrailPark').textContent = trail.parkName;
+    document.getElementById('modalDistance').textContent = `${trail.length_km} km`;
+    document.getElementById('modalDuration').textContent = `${trail.duration_hours}h`;
+    document.getElementById('modalElevation').textContent = `${trail.elevation_gain || 0}m`;
+    document.getElementById('modalDifficulty').textContent = trail.difficulty.charAt(0).toUpperCase() + trail.difficulty.slice(1);
+    document.getElementById('modalDescription').textContent = trail.description;
+    document.getElementById('modalTrailType').textContent = trail.trail_type || 'Sentier naturel';
+
+    // Difficulty badge
+    const difficultyColor = {
+        'facile': 'success',
+        'moyen': 'warning',
+        'difficile': 'danger'
+    }[trail.difficulty] || 'info';
+
+    document.getElementById('modalTrailBadges').innerHTML = `
+        <span class="badge badge-${difficultyColor}">
+            <i class="fas fa-${trail.difficulty === 'facile' ? 'walking' : trail.difficulty === 'moyen' ? 'hiking' : 'mountain'}"></i>
+            ${trail.difficulty.charAt(0).toUpperCase() + trail.difficulty.slice(1)}
+        </span>
+    `;
+
+    // Highlights
+    const highlights = trail.highlights || [];
+    document.getElementById('modalHighlights').innerHTML = highlights.length > 0
+        ? highlights.map(highlight => `<div class="highlight-item"><i class="fas fa-check"></i> ${highlight}</div>`).join('')
+        : '<p>Aucun point d\'intérêt spécifique mentionné.</p>';
+
+    // Preparation and Safety
+    const preparationTips = getPreparationTips(trail);
+    const safetyTips = getSafetyTips(trail);
+
+    document.getElementById('modalPreparation').innerHTML = preparationTips;
+    document.getElementById('modalSafety').innerHTML = safetyTips;
+
+    // Show modal
+    document.getElementById('trailModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeTrailModal() {
+    document.getElementById('trailModal').classList.remove('active');
+    document.body.style.overflow = ''; // Restore scrolling immediately
+    setTimeout(() => {
+        document.body.style.overflow = ''; // Ensure scrolling is restored
+    }, 300);
+}
+
+function getPreparationTips(trail) {
+    const tips = [];
+
+    if (trail.difficulty === 'difficile') {
+        tips.push('• Bonne condition physique requise');
+        tips.push('• Expérience de randonnée recommandée');
+    }
+
+    tips.push('• Eau en quantité suffisante');
+    tips.push('• Nourriture énergétique');
+    tips.push('• Téléphone chargé et moyen de communication');
+
+    if (trail.elevation_gain > 500) {
+        tips.push('• Chaussures de randonnée adaptées');
+        tips.push('• Vêtements appropriés aux conditions météo');
+    }
+
+    return tips.length > 0 ? tips.map(tip => `<p>${tip}</p>`).join('') : '<p>Préparation standard pour randonnée.</p>';
+}
+
+function getSafetyTips(trail) {
+    const tips = [
+        '• Restez sur les sentiers balisés',
+        '• Informez quelqu\'un de votre itinéraire',
+        '• Respectez la faune et la flore',
+        '• Emportez une trousse de premiers secours'
+    ];
+
+    if (trail.difficulty === 'difficile') {
+        tips.push('• Ne partez pas seul en cas de difficulté élevée');
+        tips.push('• Vérifiez les conditions météo avant le départ');
+    }
+
+    tips.push('• Numéros d\'urgence: 190 (SAMU), 197 (Police), 198 (Pompiers)');
+
+    return tips.map(tip => `<p>${tip}</p>`).join('');
+}
+
+function viewOnMap() {
+    // This would open the map page with the trail focused
+    window.open('/map', '_blank');
+}
+
+function getDirections() {
+    // This would get directions to the trailhead
+    alert('Fonctionnalité d\'itinéraire à implémenter');
+}
+
+function updateLoadMoreButton() {
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (filteredTrails.length > 12) {
+        loadMoreBtn.style.display = 'inline-flex';
+    } else {
+        loadMoreBtn.style.display = 'none';
+    }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    loadTrails();
+
+    // Search functionality
+    const searchInput = document.getElementById('trailSearch');
+    const searchBtn = document.getElementById('searchBtn');
+
+    searchInput.addEventListener('input', (e) => {
+        currentSearch = e.target.value;
+        applyFilters();
+    });
+
+    searchBtn.addEventListener('click', applyFilters);
+
+    // Filter tags
+    document.querySelectorAll('.filter-tag').forEach(tag => {
+        tag.addEventListener('click', () => {
+            document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+            tag.classList.add('active');
+            currentDifficulty = tag.dataset.difficulty;
+            applyFilters();
+        });
+    });
+
+    // Load more button
+    document.getElementById('loadMoreBtn').addEventListener('click', () => {
+        const currentCount = document.querySelectorAll('#trailsGrid .card').length;
+        const nextBatch = filteredTrails.slice(currentCount, currentCount + 12);
+        displayTrails(filteredTrails.slice(0, currentCount + 12));
+        updateLoadMoreButton();
+    });
+});
 </script>
+
+<style>
+.filter-tag {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    background: white;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.filter-tag:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.filter-tag.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.trail-card-header {
+    margin: calc(-1 * var(--spacing-md)) calc(-1 * var(--spacing-md)) 0 calc(-1 * var(--spacing-md));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.trail-modal {
+    max-width: 800px !important;
+}
+
+.trail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg);
+    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    color: white;
+}
+
+.trail-title-section {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.trail-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    backdrop-filter: blur(10px);
+}
+
+.trail-name {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+    color: white;
+}
+
+.trail-subtitle {
+    font-size: 0.9rem;
+    margin: 0.25rem 0 0 0;
+    opacity: 0.9;
+    font-style: italic;
+}
+
+.trail-badges {
+    margin-top: 0.5rem;
+}
+
+.trail-hero {
+    padding: var(--spacing-xl);
+    background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.trail-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.stat-item {
+    background: white;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--spacing-xs);
+    font-size: 1.25rem;
+}
+
+.stat-value {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 0.125rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.trail-content {
+    padding: var(--spacing-xl);
+}
+
+.content-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-sm);
+}
+
+.section-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+}
+
+.section-content {
+    padding: var(--spacing-md);
+    line-height: 1.6;
+}
+
+.section-content p {
+    margin-bottom: var(--spacing-sm);
+}
+
+.highlights-list .highlight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+    padding: var(--spacing-xs) 0;
+}
+
+.highlights-list .highlight-item i {
+    color: var(--success);
+    margin-top: 0.125rem;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .trail-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .trail-name {
+        font-size: 1.5rem;
+    }
+
+    .trail-hero {
+        padding: var(--spacing-md);
+    }
+
+    .trail-content {
+        padding: var(--spacing-md);
+    }
+}
+</style>
 {% endblock %}

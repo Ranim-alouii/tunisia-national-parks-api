@@ -6,138 +6,549 @@
 <section class="section">
     <div class="container">
         <div class="section-header">
-            <h1 class="section-title">Comparer les Parcs</h1>
-            <p class="section-subtitle">Comparez jusqu'à 4 parcs côte à côte</p>
+            <h1 class="section-title">⚖️ Comparer les Parcs</h1>
+            <p class="section-subtitle">Comparez jusqu'à 4 parcs côte à côte pour trouver celui qui vous convient</p>
         </div>
 
-        <div class="comparison-controls">
-            <input type="text" id="parkSearch" placeholder="Rechercher des parcs..." style="flex: 1; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
-            <div id="selectedParks" style="display: flex; gap: 0.5rem; flex-wrap: wrap; min-height: 40px; align-items: center;"></div>
-            <button class="btn btn-primary" onclick="compareParks()" id="compareBtn" disabled>
-                <i class="fas fa-balance-scale"></i> Comparer
-            </button>
+        <!-- Selection Interface -->
+        <div class="comparison-selector" style="background: white; border-radius: var(--radius-lg); padding: var(--spacing-xl); margin-bottom: var(--spacing-xl); box-shadow: var(--shadow-md);">
+            <div class="selector-header" style="margin-bottom: var(--spacing-lg);">
+                <h3 style="margin: 0 0 var(--spacing-sm) 0;"><i class="fas fa-search"></i> Sélectionnez les parcs à comparer</h3>
+                <p style="color: var(--text-secondary); margin: 0;">Cliquez sur les parcs ci-dessous pour les ajouter à la comparaison</p>
+            </div>
+
+            <!-- Park Selection Grid -->
+            <div class="parks-selection-grid" id="parksSelectionGrid">
+                <!-- Parks will be loaded here -->
+            </div>
         </div>
 
+        <!-- Selected Parks Summary -->
+        <div class="selected-parks-summary" id="selectedParksSummary" style="display: none; background: var(--primary); color: white; border-radius: var(--radius-lg); padding: var(--spacing-lg); margin-bottom: var(--spacing-xl);">
+            <h3 style="margin: 0 0 var(--spacing-md) 0;"><i class="fas fa-list-check"></i> Parcs sélectionnés pour la comparaison</h3>
+            <div id="selectedParksList" style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm);"></div>
+            <div style="margin-top: var(--spacing-md);">
+                <button class="btn btn-light" onclick="clearSelection()" style="margin-right: var(--spacing-sm);">
+                    <i class="fas fa-trash"></i> Vider la sélection
+                </button>
+                <button class="btn btn-secondary" onclick="performComparison()" id="compareBtn" disabled>
+                    <i class="fas fa-balance-scale"></i> Lancer la comparaison
+                </button>
+            </div>
+        </div>
+
+        <!-- Comparison Results -->
         <div id="comparisonResults" style="display: none;">
-            <h3>Résultats de la Comparaison</h3>
-            <div id="comparisonTable"></div>
+            <div class="comparison-header" style="text-align: center; margin-bottom: var(--spacing-xl);">
+                <h2 style="color: var(--primary); margin-bottom: var(--spacing-sm);">Résultats de la Comparaison</h2>
+                <p style="color: var(--text-secondary); font-size: 1.1rem;">Analyse détaillée des parcs sélectionnés</p>
+            </div>
+
+            <!-- Overview Cards -->
+            <div class="comparison-overview" id="comparisonOverview" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-xl);">
+                <!-- Overview cards will be populated -->
+            </div>
+
+            <!-- Detailed Comparison Table -->
+            <div class="comparison-table-container" style="background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; margin-bottom: var(--spacing-xl);">
+                <div class="table-header" style="background: var(--bg-secondary); padding: var(--spacing-lg); border-bottom: 1px solid var(--bg-tertiary);">
+                    <h3 style="margin: 0;"><i class="fas fa-table"></i> Comparaison Détaillée</h3>
+                </div>
+                <div class="table-responsive" style="overflow-x: auto;">
+                    <table class="comparison-table" id="comparisonTable" style="width: 100%; border-collapse: collapse;">
+                        <!-- Table will be populated -->
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="recommendations-section" style="background: linear-gradient(135deg, var(--success), var(--tertiary)); color: white; border-radius: var(--radius-lg); padding: var(--spacing-xl); margin-bottom: var(--spacing-xl);">
+                <h3 style="margin: 0 0 var(--spacing-md) 0;"><i class="fas fa-lightbulb"></i> Recommandations</h3>
+                <div id="recommendationsContent">
+                    <!-- Recommendations will be populated -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="comparison-actions" style="text-align: center;">
+                <button class="btn btn-outline" onclick="exportComparison()" style="margin-right: var(--spacing-md);">
+                    <i class="fas fa-download"></i> Exporter la comparaison
+                </button>
+                <button class="btn btn-primary" onclick="startNewComparison()">
+                    <i class="fas fa-plus"></i> Nouvelle comparaison
+                </button>
+            </div>
         </div>
     </div>
 </section>
+
+<!-- Park Preview Modal -->
+<div class="modal-overlay" id="parkPreviewModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="previewParkName">Nom du Parc</h3>
+            <button class="modal-close" onclick="closeParkPreview()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="parkPreviewContent">
+                <!-- Park preview will be populated -->
+            </div>
+            <div class="modal-footer" style="margin-top: var(--spacing-lg);">
+                <button class="btn btn-outline" onclick="closeParkPreview()">Fermer</button>
+                <button class="btn btn-primary" onclick="addToComparisonFromModal()">
+                    <i class="fas fa-plus"></i> Ajouter à la comparaison
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 let allParks = [];
 let selectedParks = [];
+let currentPreviewPark = null;
 
 async function loadParks() {
     try {
         const response = await fetch('/api/parks');
         allParks = await response.json();
-        setupSearch();
+        displayParkSelection();
     } catch (error) {
         console.error('Error loading parks:', error);
+        showError('Erreur lors du chargement des parcs');
     }
 }
 
-function setupSearch() {
-    const searchInput = document.getElementById('parkSearch');
+function displayParkSelection() {
+    const container = document.getElementById('parksSelectionGrid');
+    container.innerHTML = '';
 
-    searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase();
-        if (query.length < 2) return;
+    allParks.forEach(park => {
+        const isSelected = selectedParks.some(p => p.id === park.id);
 
-        const matches = allParks.filter(park =>
-            park.name.toLowerCase().includes(query) ||
-            park.governorate.toLowerCase().includes(query)
-        ).slice(0, 5);
+        const card = document.createElement('div');
+        card.className = `park-selection-card ${isSelected ? 'selected' : ''}`;
+        card.onclick = () => toggleParkSelection(park.id);
 
-        showSuggestions(matches);
+        const imageUrl = park.images && park.images.length > 0
+            ? park.images[0]
+            : 'https://via.placeholder.com/300x200?text=' + encodeURIComponent(park.name);
+
+        card.innerHTML = `
+            <div class="card-image" style="background-image: url('${imageUrl}');"></div>
+            <div class="card-content">
+                <h4>${park.name}</h4>
+                <p class="governorate"><i class="fas fa-map-marker-alt"></i> ${park.governorate}</p>
+                <p class="area"><i class="fas fa-ruler-combined"></i> ${park.area_km2} km²</p>
+                <div class="selection-indicator">
+                    ${isSelected ? '<i class="fas fa-check-circle"></i> Sélectionné' : '<i class="far fa-circle"></i> Cliquer pour sélectionner'}
+                </div>
+            </div>
+            <button class="preview-btn" onclick="event.stopPropagation(); showParkPreview(${park.id})">
+                <i class="fas fa-eye"></i>
+            </button>
+        `;
+
+        container.appendChild(card);
     });
 }
 
-function showSuggestions(matches) {
-    // Simple implementation - in real app you'd show a dropdown
-    console.log('Suggestions:', matches);
-}
-
-function addToComparison(parkId) {
-    if (selectedParks.length >= 4) return;
-
+function toggleParkSelection(parkId) {
     const park = allParks.find(p => p.id === parkId);
-    if (!park || selectedParks.includes(park)) return;
+    if (!park) return;
 
-    selectedParks.push(park);
-    updateSelectedParks();
+    const isSelected = selectedParks.some(p => p.id === park.id);
+
+    if (isSelected) {
+        selectedParks = selectedParks.filter(p => p.id !== park.id);
+    } else {
+        if (selectedParks.length >= 4) {
+            showError('Vous ne pouvez comparer que 4 parcs maximum');
+            return;
+        }
+        selectedParks.push(park);
+    }
+
+    displayParkSelection();
+    updateSelectedParksSummary();
 }
 
-function removeFromComparison(parkId) {
-    selectedParks = selectedParks.filter(p => p.id !== parkId);
-    updateSelectedParks();
-}
-
-function updateSelectedParks() {
-    const container = document.getElementById('selectedParks');
+function updateSelectedParksSummary() {
+    const summary = document.getElementById('selectedParksSummary');
+    const list = document.getElementById('selectedParksList');
     const compareBtn = document.getElementById('compareBtn');
 
-    container.innerHTML = selectedParks.map(park => `
-        <span class="badge badge-info" style="cursor: pointer;" onclick="removeFromComparison(${park.id})">
-            ${park.name} <i class="fas fa-times"></i>
-        </span>
+    if (selectedParks.length === 0) {
+        summary.style.display = 'none';
+        return;
+    }
+
+    summary.style.display = 'block';
+    list.innerHTML = selectedParks.map(park => `
+        <div class="selected-park-item" style="background: rgba(255,255,255,0.1); padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md); display: flex; align-items: center; gap: var(--spacing-sm);">
+            <span>${park.name}</span>
+            <button onclick="removeFromComparison(${park.id})" style="background: none; border: none; color: white; cursor: pointer; padding: 0.25rem;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
     `).join('');
 
     compareBtn.disabled = selectedParks.length < 2;
 }
 
-async function compareParks() {
+function removeFromComparison(parkId) {
+    selectedParks = selectedParks.filter(p => p.id !== parkId);
+    displayParkSelection();
+    updateSelectedParksSummary();
+}
+
+function clearSelection() {
+    selectedParks = [];
+    displayParkSelection();
+    updateSelectedParksSummary();
+    document.getElementById('comparisonResults').style.display = 'none';
+}
+
+async function performComparison() {
     if (selectedParks.length < 2) return;
 
-    const parkIds = selectedParks.map(p => p.id).join(',');
     try {
+        const parkIds = selectedParks.map(p => p.id).join(',');
         const response = await fetch(`/api/parks/compare?park_ids=${parkIds}`);
         const data = await response.json();
 
-        displayComparison(data);
+        displayComparisonResults(data);
+        document.getElementById('comparisonResults').style.display = 'block';
+        document.getElementById('comparisonResults').scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         console.error('Error comparing parks:', error);
+        showError('Erreur lors de la comparaison');
     }
 }
 
-function displayComparison(data) {
-    const container = document.getElementById('comparisonResults');
-    container.style.display = 'block';
+function displayComparisonResults(data) {
+    // Overview cards
+    const overviewContainer = document.getElementById('comparisonOverview');
+    overviewContainer.innerHTML = data.map(park => `
+        <div class="overview-card" style="background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden;">
+            <div style="background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: var(--spacing-lg);">
+                <h4 style="margin: 0; font-size: 1.25rem;">${park.park_name}</h4>
+                <p style="margin: 0.25rem 0 0 0; opacity: 0.9;">${park.governorate}</p>
+            </div>
+            <div style="padding: var(--spacing-lg);">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+                    <div class="metric">
+                        <div class="metric-value">${park.area_hectares || 'N/A'}</div>
+                        <div class="metric-label">Hectares</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">${park.species_count}</div>
+                        <div class="metric-label">Espèces</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">${park.trails_count}</div>
+                        <div class="metric-label">Sentiers</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">${park.average_rating ? park.average_rating.toFixed(1) : 'N/A'}</div>
+                        <div class="metric-label">Note</div>
+                    </div>
+                </div>
+                <a href="/parks/${park.park_id}" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-eye"></i> Voir le détail
+                </a>
+            </div>
+        </div>
+    `).join('');
 
-    let html = '<div class="comparison-table">';
-    html += '<table>';
-    html += '<thead><tr><th>Critère</th>';
-    data.forEach(park => {
-        html += `<th>${park.park_name}</th>`;
-    });
-    html += '</tr></thead><tbody>';
-
-    // Add rows for different criteria
+    // Detailed table
+    const table = document.getElementById('comparisonTable');
     const criteria = [
-        { key: 'governorate', label: 'Gouvernorat' },
-        { key: 'area_hectares', label: 'Superficie (ha)' },
-        { key: 'species_count', label: 'Nombre d\'espèces' },
-        { key: 'trails_count', label: 'Nombre de sentiers' },
-        { key: 'average_rating', label: 'Note moyenne' }
+        { key: 'governorate', label: 'Gouvernorat', icon: 'fas fa-map-marker-alt' },
+        { key: 'area_hectares', label: 'Superficie (ha)', icon: 'fas fa-ruler-combined' },
+        { key: 'species_count', label: 'Nombre d\'espèces', icon: 'fas fa-paw' },
+        { key: 'trails_count', label: 'Nombre de sentiers', icon: 'fas fa-hiking' },
+        { key: 'average_rating', label: 'Note moyenne', icon: 'fas fa-star' }
     ];
 
+    let tableHtml = '<thead><tr><th style="text-align: left; padding: var(--spacing-md); border-bottom: 2px solid var(--bg-tertiary);">Critère</th>';
+    data.forEach(park => {
+        tableHtml += `<th style="text-align: center; padding: var(--spacing-md); border-bottom: 2px solid var(--bg-tertiary);">${park.park_name}</th>`;
+    });
+    tableHtml += '</tr></thead><tbody>';
+
     criteria.forEach(criterion => {
-        html += `<tr><td><strong>${criterion.label}</strong></td>`;
+        tableHtml += `<tr><td style="padding: var(--spacing-md); border-bottom: 1px solid var(--bg-tertiary);"><i class="${criterion.icon}" style="margin-right: var(--spacing-sm); color: var(--primary);"></i>${criterion.label}</td>`;
         data.forEach(park => {
             const value = park[criterion.key];
-            html += `<td>${value !== null ? value : 'N/A'}</td>`;
+            const displayValue = value !== null && value !== undefined ? value : 'N/A';
+            tableHtml += `<td style="text-align: center; padding: var(--spacing-md); border-bottom: 1px solid var(--bg-tertiary);">${displayValue}</td>`;
         });
-        html += '</tr>';
+        tableHtml += '</tr>';
     });
 
-    html += '</tbody></table></div>';
-    document.getElementById('comparisonTable').innerHTML = html;
+    tableHtml += '</tbody>';
+    table.innerHTML = tableHtml;
+
+    // Recommendations
+    const recommendations = generateRecommendations(data);
+    document.getElementById('recommendationsContent').innerHTML = recommendations;
 }
 
+function generateRecommendations(data) {
+    const recommendations = [];
+
+    // Find park with most species
+    const mostSpecies = data.reduce((max, park) => park.species_count > max.species_count ? park : max);
+    recommendations.push(`🌿 <strong>${mostSpecies.park_name}</strong> offre la plus grande diversité d'espèces à observer.`);
+
+    // Find park with most trails
+    const mostTrails = data.reduce((max, park) => park.trails_count > max.trails_count ? park : max);
+    recommendations.push(`🗺️ <strong>${mostTrails.park_name}</strong> propose le plus grand nombre de sentiers de randonnée.`);
+
+    // Find highest rated park
+    const highestRated = data.filter(p => p.average_rating).reduce((max, park) =>
+        !max.average_rating || park.average_rating > max.average_rating ? park : max);
+    if (highestRated.average_rating) {
+        recommendations.push(`⭐ <strong>${highestRated.park_name}</strong> est le mieux noté par les visiteurs.`);
+    }
+
+    // Find largest park
+    const largest = data.reduce((max, park) => (park.area_hectares || 0) > (max.area_hectares || 0) ? park : max);
+    if (largest.area_hectares) {
+        recommendations.push(`🏞️ <strong>${largest.park_name}</strong> est le plus vaste avec ${largest.area_hectares} hectares.`);
+    }
+
+    return recommendations.length > 0
+        ? recommendations.map(rec => `<p style="margin-bottom: var(--spacing-sm);">${rec}</p>`).join('')
+        : '<p>Aucune recommandation spécifique disponible.</p>';
+}
+
+function showParkPreview(parkId) {
+    const park = allParks.find(p => p.id === parkId);
+    if (!park) return;
+
+    currentPreviewPark = park;
+
+    document.getElementById('previewParkName').textContent = park.name;
+
+    const imageUrl = park.images && park.images.length > 0
+        ? park.images[0]
+        : 'https://via.placeholder.com/400x250?text=' + encodeURIComponent(park.name);
+
+    document.getElementById('parkPreviewContent').innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg);">
+            <div>
+                <img src="${imageUrl}" alt="${park.name}" style="width: 100%; height: 250px; object-fit: cover; border-radius: var(--radius-md);">
+            </div>
+            <div>
+                <div style="margin-bottom: var(--spacing-md);">
+                    <h4 style="margin-bottom: var(--spacing-sm);">Informations générales</h4>
+                    <p><strong>Gouvernorat:</strong> ${park.governorate}</p>
+                    <p><strong>Superficie:</strong> ${park.area_km2} km²</p>
+                    <p><strong>Description:</strong> ${park.description.substring(0, 150)}...</p>
+                </div>
+                <div>
+                    <h4 style="margin-bottom: var(--spacing-sm);">Actions</h4>
+                    <a href="/parks/${park.id}" class="btn btn-primary" style="width: 100%; margin-bottom: var(--spacing-sm);">
+                        <i class="fas fa-eye"></i> Voir le détail complet
+                    </a>
+                    <button onclick="addToComparisonFromModal()" class="btn btn-outline" style="width: 100%;">
+                        <i class="fas fa-plus"></i> Ajouter à la comparaison
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('parkPreviewModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeParkPreview() {
+    document.getElementById('parkPreviewModal').classList.remove('active');
+    document.body.style.overflow = '';
+    currentPreviewPark = null;
+}
+
+function addToComparisonFromModal() {
+    if (currentPreviewPark) {
+        toggleParkSelection(currentPreviewPark.id);
+        closeParkPreview();
+    }
+}
+
+function exportComparison() {
+    // Simple export - in real app you'd generate PDF or CSV
+    const data = selectedParks.map(park => `${park.name} (${park.governorate})`).join(', ');
+    navigator.clipboard.writeText(`Comparaison des parcs: ${data}`).then(() => {
+        showSuccess('Comparaison copiée dans le presse-papiers');
+    });
+}
+
+function startNewComparison() {
+    clearSelection();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showError(message) {
+    // Simple error display - in real app you'd use a proper notification system
+    alert(`Erreur: ${message}`);
+}
+
+function showSuccess(message) {
+    // Simple success display
+    alert(`Succès: ${message}`);
+}
+
+// Initialize
 document.addEventListener('DOMContentLoaded', loadParks);
 </script>
+
+<style>
+.park-selection-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    border: 3px solid transparent;
+}
+
+.park-selection-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-xl);
+}
+
+.park-selection-card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1), var(--shadow-xl);
+}
+
+.park-selection-card .card-image {
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.park-selection-card .card-content {
+    padding: var(--spacing-md);
+}
+
+.park-selection-card h4 {
+    margin: 0 0 var(--spacing-xs) 0;
+    font-size: 1.1rem;
+}
+
+.park-selection-card .governorate,
+.park-selection-card .area {
+    margin: var(--spacing-xs) 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.selection-indicator {
+    margin-top: var(--spacing-sm);
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.park-selection-card.selected .selection-indicator {
+    color: var(--success);
+}
+
+.preview-btn {
+    position: absolute;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--primary);
+    backdrop-filter: blur(10px);
+    transition: var(--transition);
+}
+
+.preview-btn:hover {
+    background: white;
+    transform: scale(1.1);
+}
+
+.comparison-table {
+    border-collapse: collapse;
+}
+
+.comparison-table th,
+.comparison-table td {
+    padding: var(--spacing-md);
+    text-align: left;
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.comparison-table th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.metric {
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.selected-park-item {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .parks-selection-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .comparison-table {
+        font-size: 0.875rem;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+        padding: var(--spacing-sm);
+    }
+
+    .overview-card {
+        margin-bottom: var(--spacing-md);
+    }
+}
+</style>
 {% endblock %}

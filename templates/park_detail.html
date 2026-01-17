@@ -131,6 +131,56 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Public APIs Section -->
+                <div class="card" id="public-apis" style="margin-bottom: 2rem;">
+                    <div class="card-content">
+                        <h2><i class="fas fa-globe"></i> Informations Externes</h2>
+
+                        <!-- Tabs for different APIs -->
+                        <div class="api-tabs" style="margin-bottom: 2rem;">
+                            <button onclick="showApiTab('unsplash')" class="tab-btn active" id="unsplash-tab">
+                                <i class="fas fa-camera"></i> Images Nature
+                            </button>
+                            <button onclick="showApiTab('wikipedia')" class="tab-btn" id="wikipedia-tab">
+                                <i class="fas fa-book"></i> Wikipedia
+                            </button>
+                            <button onclick="showApiTab('places')" class="tab-btn" id="places-tab">
+                                <i class="fas fa-map-marker-alt"></i> Lieux Proches
+                            </button>
+                        </div>
+
+                        <!-- Unsplash Images -->
+                        <div id="unsplash-content" class="api-content active">
+                            <div id="unsplashImages" class="grid grid-4">
+                                <p style="color: var(--text-secondary);">Chargement des images...</p>
+                            </div>
+                        </div>
+
+                        <!-- Wikipedia Info -->
+                        <div id="wikipedia-content" class="api-content">
+                            <div id="wikipediaInfo">
+                                <p style="color: var(--text-secondary);">Chargement des informations...</p>
+                            </div>
+                        </div>
+
+                        <!-- Nearby Places -->
+                        <div id="places-content" class="api-content">
+                            <div style="margin-bottom: 1rem;">
+                                <select id="placeType" onchange="loadNearbyPlaces()" style="padding: 0.5rem; border-radius: var(--radius-sm); border: 2px solid #e9ecef;">
+                                    <option value="restaurant">Restaurants</option>
+                                    <option value="hotel">Hôtels</option>
+                                    <option value="cafe">Cafés</option>
+                                    <option value="gas_station">Stations-service</option>
+                                    <option value="hospital">Hôpitaux</option>
+                                </select>
+                            </div>
+                            <div id="nearbyPlaces" class="grid grid-3">
+                                <p style="color: var(--text-secondary);">Chargement des lieux proches...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Right Column (Sidebar) -->
@@ -249,7 +299,7 @@
 const parkId = {{ park.id }};
 const parkLat = {{ park.latitude }};
 const parkLng = {{ park.longitude }};
-const parkName = "{{ park.name | replace('"'\\"') }}";
+const parkName = "{{ park.name | replace('"', '\\"') }}";
 const parkImages = {{ park.images | default([]) | tojson }};
 
 // Initialize map
@@ -510,6 +560,145 @@ async function submitReview() {
     }
 }
 
+// API Tabs functionality
+function showApiTab(tabName) {
+    // Hide all content
+    document.querySelectorAll('.api-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    // Remove active from all tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Show selected content
+    document.getElementById(tabName + '-content').classList.add('active');
+    document.getElementById(tabName + '-tab').classList.add('active');
+
+    // Load data for the tab
+    if (tabName === 'unsplash') {
+        loadUnsplashImages();
+    } else if (tabName === 'wikipedia') {
+        loadWikipediaInfo();
+    } else if (tabName === 'places') {
+        loadNearbyPlaces();
+    }
+}
+
+// Load Unsplash images
+async function loadUnsplashImages() {
+    try {
+        const response = await fetch(`/api/parks/${parkId}/unsplash-images`);
+        const data = await response.json();
+
+        if (data.length === 0) {
+            document.getElementById('unsplashImages').innerHTML = '<p style="color: var(--text-secondary);">Aucune image disponible. Vérifiez votre clé API Unsplash.</p>';
+            return;
+        }
+
+        document.getElementById('unsplashImages').innerHTML = data.map(img => `
+            <div class="card hover-lift">
+                <img src="${img.url}" alt="${img.alt_description || img.description || 'Image nature'}" style="width: 100%; height: 200px; object-fit: cover;">
+                <div class="card-content">
+                    <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                        📸 ${img.photographer}
+                    </p>
+                    ${img.description ? `<p style="font-size: 0.875rem;">${img.description}</p>` : ''}
+                    <a href="${img.unsplash_url}" target="_blank" class="btn btn-outline btn-sm" style="width: 100%;">
+                        <i class="fas fa-external-link-alt"></i> Voir sur Unsplash
+                    </a>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading Unsplash images:', error);
+        document.getElementById('unsplashImages').innerHTML = '<p style="color: var(--text-secondary);">Erreur lors du chargement des images.</p>';
+    }
+}
+
+// Load Wikipedia info
+async function loadWikipediaInfo() {
+    try {
+        const response = await fetch(`/api/parks/${parkId}/wikipedia`);
+        const data = await response.json();
+
+        if (!data.wikipedia_info.title) {
+            document.getElementById('wikipediaInfo').innerHTML = '<p style="color: var(--text-secondary);">Aucune information Wikipedia disponible pour ce parc.</p>';
+            return;
+        }
+
+        const info = data.wikipedia_info;
+        document.getElementById('wikipediaInfo').innerHTML = `
+            <div class="wikipedia-card">
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    ${info.thumbnail ? `<img src="${info.thumbnail}" alt="${info.title}" style="width: 120px; height: 120px; object-fit: cover; border-radius: var(--radius-md);">` : ''}
+                    <div style="flex: 1;">
+                        <h3 style="margin-bottom: 0.5rem;">${info.title}</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.6;">${info.extract}</p>
+                    </div>
+                </div>
+                <a href="${info.url}" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt"></i> Lire l'article complet sur Wikipedia
+                </a>
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Error loading Wikipedia info:', error);
+        document.getElementById('wikipediaInfo').innerHTML = '<p style="color: var(--text-secondary);">Erreur lors du chargement des informations Wikipedia.</p>';
+    }
+}
+
+// Load nearby places
+async function loadNearbyPlaces() {
+    const placeType = document.getElementById('placeType').value;
+
+    try {
+        const response = await fetch(`/api/parks/${parkId}/nearby-places?place_type=${placeType}&radius=5000`);
+        const data = await response.json();
+
+        if (data.places.length === 0) {
+            document.getElementById('nearbyPlaces').innerHTML = '<p style="color: var(--text-secondary);">Aucun lieu trouvé dans les environs. Vérifiez votre clé API Google Places.</p>';
+            return;
+        }
+
+        document.getElementById('nearbyPlaces').innerHTML = data.places.map(place => `
+            <div class="card hover-lift">
+                <div class="card-content">
+                    <h5 style="margin-bottom: 0.5rem;">${place.name}</h5>
+                    <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                        <i class="fas fa-map-marker-alt"></i> ${place.address}
+                    </p>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                        <div class="rating-stars" style="font-size: 0.875rem;">
+                            ${'<i class="fas fa-star"></i>'.repeat(Math.round(place.rating || 0))}
+                            ${'<i class="far fa-star"></i>'.repeat(5 - Math.round(place.rating || 0))}
+                        </div>
+                        <span style="font-size: 0.875rem; color: var(--text-secondary);">
+                            ${place.rating || 'N/A'}
+                        </span>
+                        ${place.open_now !== null ? `<span class="badge ${place.open_now ? 'badge-success' : 'badge-danger'}" style="font-size: 0.75rem;">${place.open_now ? 'Ouvert' : 'Fermé'}</span>` : ''}
+                    </div>
+                    <button onclick="openInMaps(${place.location.lat}, ${place.location.lng})" class="btn btn-outline btn-sm" style="width: 100%;">
+                        <i class="fas fa-directions"></i> Itinéraire
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading nearby places:', error);
+        document.getElementById('nearbyPlaces').innerHTML = '<p style="color: var(--text-secondary);">Erreur lors du chargement des lieux proches.</p>';
+    }
+}
+
+// Open location in Google Maps
+function openInMaps(lat, lng) {
+    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initMap();
@@ -517,6 +706,57 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSpecies();
     loadReviews();
     loadWeather();
+
+    // Load first API tab by default
+    loadUnsplashImages();
 });
 </script>
+
+<style>
+/* API Tabs */
+.api-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 1rem;
+}
+
+.tab-btn {
+    padding: 0.75rem 1rem;
+    border: none;
+    background: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tab-btn:hover {
+    background: var(--bg-secondary);
+}
+
+.tab-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+.api-content {
+    display: none;
+}
+
+.api-content.active {
+    display: block;
+}
+
+.wikipedia-card {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--primary);
+}
+</style>
+
 {% endblock %}

@@ -10,36 +10,100 @@
             <p class="section-subtitle">Découvrez les 17 parcs nationaux de Tunisie</p>
         </div>
 
-        <!-- Filters -->
-        <div class="filters-bar">
-            <div class="filter-group">
-                <label>Gouvernorat:</label>
-                <select class="filter-select" id="governorateFilter">
-                    <option value="">Tous</option>
-                </select>
+        <!-- Search and Filters -->
+        <div class="search-filters">
+            <div class="search-bar">
+                <div style="flex: 1; position: relative;">
+                    <input type="text" id="searchInput" placeholder="Rechercher un parc..." class="form-input">
+                    <i class="fas fa-search" style="position: absolute; right: var(--spacing-md); top: 50%; transform: translateY(-50%); color: var(--text-tertiary);"></i>
+                </div>
+                <button id="searchBtn" class="btn btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
             </div>
-            <div class="filter-group">
-                <label>Superficie min (km²):</label>
-                <input type="number" class="filter-input" id="minAreaFilter" placeholder="0">
+
+            <div class="filter-tags">
+                <button class="filter-tag active" data-type="all">
+                    <i class="fas fa-list"></i> Tous
+                </button>
+                <button class="filter-tag" data-governorate="Tunis">
+                    <i class="fas fa-map-marker-alt"></i> Tunis
+                </button>
+                <button class="filter-tag" data-size="large">
+                    <i class="fas fa-expand"></i> Grands
+                </button>
+                <button class="filter-tag" data-rating="top">
+                    <i class="fas fa-star"></i> Mieux Notés
+                </button>
             </div>
-            <div class="filter-group">
-                <label>Superficie max (km²):</label>
-                <input type="number" class="filter-input" id="maxAreaFilter" placeholder="1000">
+
+            <!-- Advanced Filters -->
+            <div class="advanced-filters" style="margin-top: var(--spacing-lg); padding-top: var(--spacing-lg); border-top: 1px solid var(--bg-tertiary);">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
+                    <div class="form-group">
+                        <label class="form-label">Gouvernorat:</label>
+                        <select class="form-select" id="governorateFilter">
+                            <option value="">Tous les gouvernorats</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Superficie min (km²):</label>
+                        <input type="number" class="form-input" id="minAreaFilter" placeholder="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Superficie max (km²):</label>
+                        <input type="number" class="form-input" id="maxAreaFilter" placeholder="1000" min="0">
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: end;">
+                        <button class="btn btn-primary" onclick="applyFilters()" style="width: 100%;">
+                            <i class="fas fa-filter"></i> Appliquer les Filtres
+                        </button>
+                    </div>
+                </div>
             </div>
-            <button class="filter-button" onclick="applyFilters()">
-                <i class="fas fa-search"></i> Filtrer
-            </button>
+        </div>
+
+        <!-- Results Summary -->
+        <div class="results-summary" style="margin-bottom: var(--spacing-lg);">
+            <p id="resultsCount" style="color: var(--text-secondary);">
+                <i class="fas fa-info-circle"></i> Chargement...
+            </p>
         </div>
 
         <!-- Parks Grid -->
-        <div class="grid grid-3" id="parksGrid">
-            <!-- Parks will be loaded here -->
+        <div class="grid grid-3 stagger-children" id="parksGrid">
+            <!-- Skeleton loading -->
+            <div class="card skeleton">
+                <div class="skeleton-image"></div>
+                <div class="card-content">
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                </div>
+            </div>
+            <div class="card skeleton">
+                <div class="skeleton-image"></div>
+                <div class="card-content">
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                </div>
+            </div>
+            <div class="card skeleton">
+                <div class="skeleton-image"></div>
+                <div class="card-content">
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                </div>
+            </div>
         </div>
 
-        <!-- Loading -->
-        <div id="loading" style="text-align: center; padding: 2rem;">
-            <div class="spinner"></div>
-            <p>Chargement des parcs...</p>
+        <!-- Load More -->
+        <div style="text-align: center; margin-top: var(--spacing-2xl);">
+            <button id="loadMoreBtn" class="btn btn-outline" style="display: none;">
+                <i class="fas fa-plus"></i> Charger plus de parcs
+            </button>
         </div>
     </div>
 </section>
@@ -48,15 +112,27 @@
 {% block extra_js %}
 <script>
 let allParks = [];
+let filteredParks = [];
+let currentSearch = '';
+let currentFilter = 'all';
+let currentPage = 1;
+const itemsPerPage = 9;
 
 async function loadParks() {
     try {
+        showLoading();
         const response = await fetch('/api/parks');
         allParks = await response.json();
-        displayParks(allParks);
+        filteredParks = [...allParks];
         populateGovernorates();
+        displayParks(filteredParks.slice(0, itemsPerPage));
+        updateResultsCount();
+        updateLoadMoreButton();
+        hideLoading();
     } catch (error) {
         console.error('Error loading parks:', error);
+        hideLoading();
+        showToast('Erreur lors du chargement des parcs', 'error');
     }
 }
 
@@ -64,9 +140,24 @@ function displayParks(parks) {
     const container = document.getElementById('parksGrid');
     container.innerHTML = '';
 
-    parks.forEach(park => {
+    if (parks.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                <i class="fas fa-search" style="font-size: 3rem; color: var(--text-tertiary); margin-bottom: 1rem;"></i>
+                <h3 style="color: var(--text-secondary);">Aucun parc trouvé</h3>
+                <p style="color: var(--text-tertiary);">Essayez de modifier vos critères de recherche.</p>
+            </div>
+        `;
+        return;
+    }
+
+    parks.forEach((park, index) => {
         const card = document.createElement('div');
-        card.className = 'card hover-lift';
+        card.className = 'card hover-lift card-interactive';
+        card.style.animationDelay = `${index * 0.1}s`;
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'article');
+        card.setAttribute('aria-labelledby', `park-title-${park.id}`);
 
         const imageUrl = park.images && park.images.length > 0
             ? park.images[0]
@@ -74,7 +165,119 @@ function displayParks(parks) {
 
         card.innerHTML = `
             <div class="zoom-container">
-                <img src="${imageUrl}" alt="${park.name}" class="card-image">
+                <img src="${imageUrl}" alt="Photo du parc ${park.name}" class="card-image" loading="lazy">
+                ${park.average_rating ? `<div class="card-badge"><i class="fas fa-star"></i> ${park.average_rating}</div>` : ''}
+            </div>
+            <div class="card-content">
+                <h3 id="park-title-${park.id}" class="card-title">${park.name}</h3>
+                <div class="card-meta">
+                    <span><i class="fas fa-map-marker-alt" aria-hidden="true"></i> ${park.governorate}</span>
+                    <span><i class="fas fa-ruler-combined" aria-hidden="true"></i> ${park.area_km2} km²</span>
+                </div>
+                <p class="card-description">${park.description.substring(0, 120)}...</p>
+                <a href="/parks/${park.id}" class="btn btn-primary" style="width: 100;" aria-describedby="park-link-${park.id}">
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i> Découvrir
+                </a>
+                <span id="park-link-${park.id}" class="sr-only">Voir les détails complets du parc ${park.name}</span>
+            </div>
+        `;
+
+        // Add keyboard navigation
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                window.location.href = `/parks/${park.id}`;
+            }
+        });
+
+        container.appendChild(card);
+    });
+}
+
+function populateGovernorates() {
+    const select = document.getElementById('governorateFilter');
+    const governorates = [...new Set(allParks.map(p => p.governorate))].sort();
+
+    governorates.forEach(gov => {
+        const option = document.createElement('option');
+        option.value = gov;
+        option.textContent = gov;
+        select.appendChild(option);
+    });
+}
+
+function applyFilters() {
+    const searchTerm = currentSearch.toLowerCase();
+    const governorate = document.getElementById('governorateFilter').value;
+    const minArea = parseFloat(document.getElementById('minAreaFilter').value) || 0;
+    const maxArea = parseFloat(document.getElementById('maxAreaFilter').value) || Infinity;
+
+    filteredParks = allParks.filter(park => {
+        // Search filter
+        const matchesSearch = !searchTerm ||
+            park.name.toLowerCase().includes(searchTerm) ||
+            park.governorate.toLowerCase().includes(searchTerm) ||
+            park.description.toLowerCase().includes(searchTerm);
+
+        // Governorate filter
+        const matchesGovernorate = !governorate || park.governorate === governorate;
+
+        // Area filter
+        const matchesArea = park.area_km2 >= minArea && park.area_km2 <= maxArea;
+
+        // Type filter
+        let matchesType = true;
+        if (currentFilter === 'large') {
+            matchesType = park.area_km2 > 100;
+        } else if (currentFilter === 'top') {
+            matchesType = park.average_rating && park.average_rating >= 4;
+        }
+
+        return matchesSearch && matchesGovernorate && matchesArea && matchesType;
+    });
+
+    currentPage = 1;
+    displayParks(filteredParks.slice(0, itemsPerPage));
+    updateResultsCount();
+    updateLoadMoreButton();
+}
+
+function updateResultsCount() {
+    const countElement = document.getElementById('resultsCount');
+    const count = filteredParks.length;
+    countElement.innerHTML = `<i class="fas fa-info-circle"></i> ${count} parc${count !== 1 ? 's' : ''} trouvé${count !== 1 ? 's' : ''}`;
+}
+
+function updateLoadMoreButton() {
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (filteredParks.length > currentPage * itemsPerPage) {
+        loadMoreBtn.style.display = 'inline-flex';
+    } else {
+        loadMoreBtn.style.display = 'none';
+    }
+}
+
+function loadMoreParks() {
+    currentPage++;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = currentPage * itemsPerPage;
+    const newParks = filteredParks.slice(startIndex, endIndex);
+
+    const container = document.getElementById('parksGrid');
+
+    newParks.forEach((park, index) => {
+        const card = document.createElement('div');
+        card.className = 'card hover-lift card-interactive';
+        card.style.animationDelay = `${index * 0.1}s`;
+
+        const imageUrl = park.images && park.images.length > 0
+            ? park.images[0]
+            : 'https://via.placeholder.com/400x250?text=' + encodeURIComponent(park.name);
+
+        card.innerHTML = `
+            <div class="zoom-container">
+                <img src="${imageUrl}" alt="Photo du parc ${park.name}" class="card-image" loading="lazy">
+                ${park.average_rating ? `<div class="card-badge"><i class="fas fa-star"></i> ${park.average_rating}</div>` : ''}
             </div>
             <div class="card-content">
                 <h3 class="card-title">${park.name}</h3>
@@ -92,38 +295,46 @@ function displayParks(parks) {
         container.appendChild(card);
     });
 
-    document.getElementById('loading').style.display = 'none';
+    updateLoadMoreButton();
 }
 
-function populateGovernorates() {
-    const select = document.getElementById('governorateFilter');
-    const governorates = [...new Set(allParks.map(p => p.governorate))].sort();
+// Event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    loadParks();
 
-    governorates.forEach(gov => {
-        const option = document.createElement('option');
-        option.value = gov;
-        option.textContent = gov;
-        select.appendChild(option);
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+
+    let searchTimeout;
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        currentSearch = e.target.value;
+        searchTimeout = setTimeout(applyFilters, 300);
     });
-}
 
-function applyFilters() {
-    const governorate = document.getElementById('governorateFilter').value;
-    const minArea = parseFloat(document.getElementById('minAreaFilter').value) || 0;
-    const maxArea = parseFloat(document.getElementById('maxAreaFilter').value) || Infinity;
+    searchBtn.addEventListener('click', applyFilters);
 
-    let filtered = allParks;
+    // Filter tags
+    document.querySelectorAll('.filter-tag').forEach(tag => {
+        tag.addEventListener('click', () => {
+            document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+            tag.classList.add('active');
+            currentFilter = tag.dataset.type || tag.dataset.governorate || tag.dataset.size || tag.dataset.rating || 'all';
+            applyFilters();
+        });
+    });
 
-    if (governorate) {
-        filtered = filtered.filter(p => p.governorate === governorate);
-    }
+    // Load more button
+    document.getElementById('loadMoreBtn').addEventListener('click', loadMoreParks);
 
-    filtered = filtered.filter(p => p.area_km2 >= minArea && p.area_km2 <= maxArea);
-
-    displayParks(filtered);
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', loadParks);
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'k') {
+            e.preventDefault();
+            searchInput.focus();
+        }
+    });
+});
 </script>
 {% endblock %}

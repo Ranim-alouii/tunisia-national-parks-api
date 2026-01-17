@@ -24,49 +24,96 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <!-- Skip to main content (accessibility) -->
+    <a href="#main-content" class="skip-to-main">Aller au contenu principal</a>
+
     <!-- Navigation Bar -->
-    <nav class="navbar">
+    <nav class="navbar" role="navigation" aria-label="Navigation principale">
         <div class="container">
             <div class="nav-brand">
-                <i class="fas fa-mountain"></i>
-                <span>Parcs Tunisie</span>
+                <a href="/" aria-label="Parcs Nationaux de Tunisie - Accueil">
+                    <i class="fas fa-mountain" aria-hidden="true"></i>
+                    <span>Parcs Tunisie</span>
+                </a>
             </div>
-            
-            <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                <i class="fas fa-bars"></i>
+
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-expanded="false" aria-label="Basculer le menu de navigation">
+                <i class="fas fa-bars" aria-hidden="true"></i>
             </button>
-            
-            <div class="nav-menu" id="navMenu">
-                <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
-                    <i class="fas fa-home"></i> Accueil
+
+            <div class="nav-menu" id="navMenu" role="menubar">
+                <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}" role="menuitem">
+                    <i class="fas fa-home" aria-hidden="true"></i>
+                    <span>Accueil</span>
                 </a>
-                <a href="/parks" class="nav-link {% if '/parks' in request.path %}active{% endif %}">
-                    <i class="fas fa-tree"></i> Parcs
+                <div class="nav-dropdown">
+                    <button class="nav-link dropdown-toggle {% if '/parks' in request.path %}active{% endif %}" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-tree" aria-hidden="true"></i>
+                        <span>Parcs</span>
+                        <i class="fas fa-chevron-down dropdown-icon" aria-hidden="true"></i>
+                    </button>
+                    <div class="dropdown-menu" role="menu">
+                        <a href="/parks" class="dropdown-item" role="menuitem">Tous les Parcs</a>
+                        <a href="/parks?sort_by=average_rating&sort_order=desc" class="dropdown-item" role="menuitem">Mieux Notés</a>
+                        <a href="/parks?min_area=100" class="dropdown-item" role="menuitem">Grands Parcs</a>
+                        <a href="/comparison" class="dropdown-item" role="menuitem">Comparer</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <button class="nav-link dropdown-toggle {% if '/species' in request.path or '/trails' in request.path %}active{% endif %}" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-leaf" aria-hidden="true"></i>
+                        <span>Nature</span>
+                        <i class="fas fa-chevron-down dropdown-icon" aria-hidden="true"></i>
+                    </button>
+                    <div class="dropdown-menu" role="menu">
+                        <a href="/species" class="dropdown-item" role="menuitem">Biodiversité</a>
+                        <a href="/species?type=animal" class="dropdown-item" role="menuitem">Faune</a>
+                        <a href="/species?type=plant" class="dropdown-item" role="menuitem">Flore</a>
+                        <a href="/trails" class="dropdown-item" role="menuitem">Sentiers</a>
+                    </div>
+                </div>
+                <a href="/map" class="nav-link {% if '/map' in request.path %}active{% endif %}" role="menuitem">
+                    <i class="fas fa-map-marked-alt" aria-hidden="true"></i>
+                    <span>Carte</span>
                 </a>
-                <a href="/species" class="nav-link {% if '/species' in request.path %}active{% endif %}">
-                    <i class="fas fa-paw"></i> Biodiversité
+                <a href="/chat" class="nav-link" role="menuitem">
+                    <i class="fas fa-robot" aria-hidden="true"></i>
+                    <span>Assistant</span>
                 </a>
-                <a href="/trails" class="nav-link {% if '/trails' in request.path %}active{% endif %}">
-                    <i class="fas fa-hiking"></i> Sentiers
-                </a>
-                <a href="/map" class="nav-link {% if '/map' in request.path %}active{% endif %}">
-                    <i class="fas fa-map-marked-alt"></i> Carte
-                </a>
-                <a href="/comparison" class="nav-link {% if '/comparison' in request.path %}active{% endif %}">
-                    <i class="fas fa-balance-scale"></i> Comparer
-                </a>
-                <a href="/chat" class="nav-link">
-                    <i class="fas fa-robot"></i> Assistant
-                </a>
-                <a href="/emergency" class="nav-link emergency-link">
-                    <i class="fas fa-exclamation-triangle"></i> Urgence
+                <a href="/emergency" class="nav-link emergency-link" role="menuitem">
+                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                    <span>Urgence</span>
                 </a>
             </div>
         </div>
     </nav>
 
+    <!-- Breadcrumbs -->
+    {% if breadcrumbs %}
+    <nav class="breadcrumbs" aria-label="Fil d'Ariane">
+        <div class="container">
+            <ol class="breadcrumb-list">
+                <li class="breadcrumb-item">
+                    <a href="/" aria-label="Accueil">
+                        <i class="fas fa-home" aria-hidden="true"></i>
+                    </a>
+                </li>
+                {% for crumb in breadcrumbs %}
+                <li class="breadcrumb-item" {% if loop.last %}aria-current="page"{% endif %}>
+                    {% if not loop.last %}
+                    <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+                    {% else %}
+                    <span>{{ crumb.label }}</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+        </div>
+    </nav>
+    {% endif %}
+
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content" id="main-content" role="main">
         {% block content %}{% endblock %}
     </main>
 
@@ -139,6 +186,7 @@
     <!-- JavaScript -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="/static/js/enhanced-nav.js"></script>
     <script src="/static/js/app.js"></script>
     
     {% block extra_js %}{% endblock %}

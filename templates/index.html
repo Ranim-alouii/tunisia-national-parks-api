@@ -4,23 +4,182 @@
 
 {% block content %}
 
-<!-- Hero Section -->
-<section class="hero">
-    <div class="hero-background"></div>
-    <div class="hero-content">
-        <h1 class="animate-fade-in-up">Explorez les Trésors Naturels de la Tunisie</h1>
-        <p class="animate-fade-in-up" style="animation-delay: 0.2s;">
-            Découvrez 17 parcs nationaux exceptionnels, une biodiversité unique et des paysages à couper le souffle.
-        </p>
-        <div class="hero-buttons animate-fade-in-up" style="animation-delay: 0.4s;">
-            <a href="/parks" class="btn btn-primary btn-lg">
-                <i class="fas fa-tree"></i> Explorer les Parcs
+<!-- Joyful Nature Hero Section -->
+<section class="nature-hero">
+    <!-- Animated Nature Background -->
+    <div class="hero-bg">
+        <div class="hero-bg-pattern"></div>
+        <div class="hero-bg-gradient"></div>
+        <div class="hero-bg-shapes">
+            <div class="floating-shape shape-1">🌿</div>
+            <div class="floating-shape shape-2">🦌</div>
+            <div class="floating-shape shape-3">⛰️</div>
+            <div class="floating-shape shape-4">🌸</div>
+            <div class="floating-shape shape-5">🦅</div>
+            <div class="floating-shape shape-6">🌻</div>
+            <div class="floating-shape shape-7">🦋</div>
+            <div class="floating-shape shape-8">🌳</div>
+        </div>
+        <div class="hero-particles">
+            <div class="particle particle-1"></div>
+            <div class="particle particle-2"></div>
+            <div class="particle particle-3"></div>
+            <div class="particle particle-4"></div>
+            <div class="particle particle-5"></div>
+        </div>
+    </div>
+
+    <!-- Hero Content -->
+    <div class="hero-container">
+        <!-- Main Content -->
+        <div class="hero-main">
+            <div class="hero-badge">
+                <span class="badge-icon">✨</span>
+                <span class="badge-text">Patrimoine Naturel Mondial</span>
+            </div>
+
+            <h1 class="hero-title">
+                <span class="hero-title-main">Bienvenue dans le</span>
+                <span class="hero-title-accent">Jardin d'Éden</span>
+                <span class="hero-title-sub">de la Tunisie</span>
+            </h1>
+
+            <p class="hero-description">
+                🌟 Découvrez 17 joyaux naturels exceptionnels, où la biodiversité danse avec la beauté sauvage.
+                Chaque parc raconte une histoire de vie, de couleur et d'émerveillement. Laissez-vous transporter
+                par la magie de la nature tunisienne ! 🦋🌸
+            </p>
+
+            <!-- Action Buttons -->
+            <div class="hero-actions">
+                <a href="/parks" class="btn-primary-joy">
+                    <span class="btn-sparkle">✨</span>
+                    <span class="btn-icon">🌲</span>
+                    <span class="btn-text">Commencer l'Aventure</span>
+                    <span class="btn-heart">💚</span>
+                </a>
+
+                <a href="/map" class="btn-secondary-joy">
+                    <span class="btn-icon">🗺️</span>
+                    <span class="btn-text">Explorer la Carte</span>
+                    <span class="btn-compass">🧭</span>
+                </a>
+            </div>
+
+            <!-- Joyful Trust Indicators -->
+            <div class="hero-trust">
+                <div class="trust-item">
+                    <span class="trust-icon">💚</span>
+                    <span class="trust-text">Nature Protégée</span>
+                </div>
+                <div class="trust-item">
+                    <span class="trust-icon">🎯</span>
+                    <span class="trust-text">Recommandations IA</span>
+                </div>
+                <div class="trust-item">
+                    <span class="trust-icon">📱</span>
+                    <span class="trust-text">Expérience Mobile</span>
+                </div>
+                <div class="trust-item">
+                    <span class="trust-icon">🌟</span>
+                    <span class="trust-text">Aventure Garantie</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vibrant Stats Cards -->
+        <div class="hero-stats">
+            <div class="stat-card featured">
+                <div class="stat-sparkle">✨</div>
+                <div class="stat-number">17</div>
+                <div class="stat-label">Parcs Magiques</div>
+                <div class="stat-icon">🏞️</div>
+                <div class="stat-decoration">🌟</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-sparkle">🦋</div>
+                <div class="stat-number">250+</div>
+                <div class="stat-label">Créatures</div>
+                <div class="stat-icon">🦋</div>
+                <div class="stat-decoration">💫</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-sparkle">🌍</div>
+                <div class="stat-number">150k</div>
+                <div class="stat-label">Hectares</div>
+                <div class="stat-icon">🌍</div>
+                <div class="stat-decoration">🌱</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-sparkle">🥾</div>
+                <div class="stat-number">45+</div>
+                <div class="stat-label">Sentiers</div>
+                <div class="stat-icon">🥾</div>
+                <div class="stat-decoration">🌿</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Joyful Scroll Indicator -->
+    <div class="hero-scroll">
+        <div class="scroll-mouse">
+            <div class="scroll-wheel"></div>
+        </div>
+        <span class="scroll-text">Faites défiler pour découvrir la magie 🌟</span>
+        <div class="scroll-sparkles">
+            <span>✨</span>
+            <span>💫</span>
+            <span>⭐</span>
+        </div>
+    </div>
+</section>
+
+<!-- Quick Actions Section -->
+<section class="section" style="padding: var(--spacing-2xl) 0; background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);">
+    <div class="container">
+        <div class="quick-actions-grid">
+            <a href="/parks" class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="fas fa-tree"></i>
+                </div>
+                <h3>Explorer les Parcs</h3>
+                <p>Découvrez nos 17 parcs nationaux avec photos et informations détaillées</p>
+                <div class="quick-action-arrow">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
             </a>
-            <a href="/map" class="btn btn-secondary btn-lg">
-                <i class="fas fa-map-marked-alt"></i> Voir la Carte
+            <a href="/species" class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="fas fa-paw"></i>
+                </div>
+                <h3>Faune & Flore</h3>
+                <p>Explorez la biodiversité exceptionnelle avec plus de 250 espèces</p>
+                <div class="quick-action-arrow">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
             </a>
-            <a href="/chat" class="btn btn-outline btn-lg" style="border-color: white; color: white;">
-                <i class="fas fa-robot"></i> Demander à l'IA
+            <a href="/trails" class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="fas fa-hiking"></i>
+                </div>
+                <h3>Sentiers de Randonnée</h3>
+                <p>Plus de 45 sentiers balisés pour tous les niveaux</p>
+                <div class="quick-action-arrow">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </a>
+            <a href="/map" class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="fas fa-map-marked-alt"></i>
+                </div>
+                <h3>Carte Interactive</h3>
+                <p>Localisez tous les parcs sur une carte détaillée</p>
+                <div class="quick-action-arrow">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
             </a>
         </div>
     </div>

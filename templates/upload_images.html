@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Images - Parcs Nationaux de Tunisie</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <i class="fas fa-mountain"></i>
+                <span>Parcs Tunisie</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">Accueil</a>
+                <a href="/parks" class="nav-link">Parcs</a>
+                <a href="/species" class="nav-link">Biodiversité</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h1 class="section-title">📸 Upload d'Images</h1>
+                    <p class="section-subtitle">
+                        Ajoutez des images aux parcs et aux espèces de la biodiversité tunisienne
+                    </p>
+                </div>
+
+                <div class="grid grid-2">
+                    <!-- Park Image Upload -->
+                    <div class="card">
+                        <div class="card-content">
+                            <h3>🏞️ Images de Parcs</h3>
+                            <p>Upload d'images pour les parcs nationaux</p>
+
+                            <form id="parkUploadForm" enctype="multipart/form-data">
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label for="parkId">ID du Parc:</label>
+                                    <select id="parkId" name="parkId" required style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 0.375rem;">
+                                        <option value="">Sélectionner un parc...</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label for="parkImage">Image du Parc:</label>
+                                    <input type="file" id="parkImage" name="file" accept="image/*" required>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                    <i class="fas fa-upload"></i> Upload Image du Parc
+                                </button>
+                            </form>
+
+                            <div id="parkUploadResult" style="margin-top: 1rem;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Species Image Upload -->
+                    <div class="card">
+                        <div class="card-content">
+                            <h3>🦌 Images d'Espèces</h3>
+                            <p>Upload d'images pour les espèces de la biodiversité</p>
+
+                            <form id="speciesUploadForm" enctype="multipart/form-data">
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label for="speciesId">ID de l'Espèce:</label>
+                                    <select id="speciesId" name="speciesId" required style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 0.375rem;">
+                                        <option value="">Sélectionner une espèce...</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label for="speciesImage">Image de l'Espèce:</label>
+                                    <input type="file" id="speciesImage" name="file" accept="image/*" required>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                    <i class="fas fa-upload"></i> Upload Image d'Espèce
+                                </button>
+                            </form>
+
+                            <div id="speciesUploadResult" style="margin-top: 1rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Images Display -->
+                <div class="card" style="margin-top: 2rem;">
+                    <div class="card-content">
+                        <h3>🖼️ Images Actuelles</h3>
+                        <div class="grid grid-3" id="currentImages">
+                            <!-- Images will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let authToken = null;
+
+        // Login function
+        async function login() {
+            try {
+                const response = await fetch('/auth/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'username': 'admin',
+                        'password': 'admin123'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.access_token;
+                    console.log('✅ Authentication successful');
+                    loadData();
+                } else {
+                    console.error('❌ Authentication failed');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+            }
+        }
+
+        // Load parks and species data
+        async function loadData() {
+            try {
+                // Load parks
+                const parksResponse = await fetch('/api/parks');
+                const parks = await parksResponse.json();
+
+                const parkSelect = document.getElementById('parkId');
+                parks.forEach(park => {
+                    const option = document.createElement('option');
+                    option.value = park.id;
+                    option.textContent = `${park.id} - ${park.name}`;
+                    parkSelect.appendChild(option);
+                });
+
+                // Load species
+                const speciesResponse = await fetch('/api/species');
+                const species = await speciesResponse.json();
+
+                const speciesSelect = document.getElementById('speciesId');
+                species.slice(0, 50).forEach(s => {  // Limit to first 50 species
+                    const option = document.createElement('option');
+                    option.value = s.id;
+                    option.textContent = `${s.id} - ${s.name}`;
+                    speciesSelect.appendChild(option);
+                });
+
+                loadCurrentImages();
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        // Load current images
+        async function loadCurrentImages() {
+            try {
+                const parksResponse = await fetch('/api/parks?limit=6');
+                const parks = await parksResponse.json();
+
+                const container = document.getElementById('currentImages');
+                container.innerHTML = '';
+
+                parks.forEach(park => {
+                    if (park.images && park.images.length > 0) {
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        card.innerHTML = `
+                            <div class="zoom-container">
+                                <img src="${park.images[0]}" alt="${park.name}" style="width: 100%; height: 200px; object-fit: cover;">
+                            </div>
+                            <div class="card-content">
+                                <h4 style="margin-bottom: 0.5rem;">${park.name}</h4>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">
+                                    ${park.images.length} image(s)
+                                </p>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error loading images:', error);
+            }
+        }
+
+        // Handle park image upload
+        document.getElementById('parkUploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!authToken) {
+                alert('Veuillez vous connecter d\'abord');
+                return;
+            }
+
+            const formData = new FormData();
+            const parkId = document.getElementById('parkId').value;
+            const fileInput = document.getElementById('parkImage');
+
+            if (!parkId || !fileInput.files[0]) {
+                alert('Veuillez sélectionner un parc et une image');
+                return;
+            }
+
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch(`/api/upload/parks/${parkId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+                const resultDiv = document.getElementById('parkUploadResult');
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div style="color: var(--success); padding: 1rem; border: 1px solid var(--success); border-radius: 0.375rem; background: rgba(16, 185, 129, 0.1);">
+                            <i class="fas fa-check-circle"></i> Image uploadée avec succès!<br>
+                            <small>URL: ${result.media_info.url}</small>
+                        </div>
+                    `;
+                    loadCurrentImages(); // Refresh images
+                } else {
+                    resultDiv.innerHTML = `
+                        <div style="color: var(--danger); padding: 1rem; border: 1px solid var(--danger); border-radius: 0.375rem; background: rgba(239, 68, 68, 0.1);">
+                            <i class="fas fa-exclamation-triangle"></i> Erreur: ${result.detail || 'Upload échoué'}
+                        </div>
+                    `;
+                }
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                document.getElementById('parkUploadResult').innerHTML = `
+                    <div style="color: var(--danger); padding: 1rem; border: 1px solid var(--danger); border-radius: 0.375rem;">
+                        <i class="fas fa-exclamation-triangle"></i> Erreur de connexion
+                    </div>
+                `;
+            }
+        });
+
+        // Handle species image upload
+        document.getElementById('speciesUploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!authToken) {
+                alert('Veuillez vous connecter d\'abord');
+                return;
+            }
+
+            const formData = new FormData();
+            const speciesId = document.getElementById('speciesId').value;
+            const fileInput = document.getElementById('speciesImage');
+
+            if (!speciesId || !fileInput.files[0]) {
+                alert('Veuillez sélectionner une espèce et une image');
+                return;
+            }
+
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch(`/api/upload/species/${speciesId}/image`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+                const resultDiv = document.getElementById('speciesUploadResult');
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div style="color: var(--success); padding: 1rem; border: 1px solid var(--success); border-radius: 0.375rem; background: rgba(16, 185, 129, 0.1);">
+                            <i class="fas fa-check-circle"></i> Image uploadée avec succès!<br>
+                            <small>URL: ${result.url}</small>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div style="color: var(--danger); padding: 1rem; border: 1px solid var(--danger); border-radius: 0.375rem; background: rgba(239, 68, 68, 0.1);">
+                            <i class="fas fa-exclamation-triangle"></i> Erreur: ${result.detail || 'Upload échoué'}
+                        </div>
+                    `;
+                }
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                document.getElementById('speciesUploadResult').innerHTML = `
+                    <div style="color: var(--danger); padding: 1rem; border: 1px solid var(--danger); border-radius: 0.375rem;">
+                        <i class="fas fa-exclamation-triangle"></i> Erreur de connexion
+                    </div>
+                `;
+            }
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', login);
+    </script>
+</body>
+</html>
