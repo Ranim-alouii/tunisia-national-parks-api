@@ -1,13 +1,13 @@
 
 # 🌿 Tunisia National Parks API - Enhanced Edition
 
-A comprehensive RESTful API for Tunisia's 17 national parks, built with **FastAPI**, **SQLModel**, and **SQLite**. Features complete biodiversity database, hiking trails, user reviews, wildlife sightings, gamification, weather integration, and interactive maps.
+A comprehensive RESTful API for Tunisia's 18 national parks, built with **FastAPI**, **SQLModel**, and **SQLite**. Features complete biodiversity database with 29 species (16 animals, 13 plants), hiking trails, user reviews, wildlife sightings, gamification, weather integration, and interactive maps.
 
 ## ✨ Features
 
 ### 🏞️ Core Functionality
-- **Complete Park Database**: All 17 Tunisia national parks with detailed information
-- **Biodiversity Management**: 53+ species (27 animals, 26 plants) with conservation data, safety guidelines, and medicinal uses
+- **Complete Park Database**: 18 Tunisia national parks with detailed information
+- **Biodiversity Management**: 29 species (16 animals, 13 plants) with conservation data, safety guidelines, and medicinal uses
 - **Image Upload**: Park and species photos with automatic optimization
 
 ### 🥾 Enhanced Features

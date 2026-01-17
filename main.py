@@ -268,13 +268,13 @@ app = FastAPI(
 Complete API for Tunisia's national parks with biodiversity, trails, reviews, and gamification.
 
 ## 🌟 New Features
-* **Trails**: Hiking trails with difficulty levels and GPX data
+* **18 National Parks**: Complete database of Tunisia's protected areas
+* **29 Species**: Comprehensive fauna & flora database (16 animals, 13 plants)
+* **Trails**: Hiking trails with difficulty levels and detailed guides
 * **Reviews & Ratings**: User reviews and park ratings
 * **Wildlife Sightings**: Report and view species sightings
 * **Badges & Gamification**: Achievement system for park explorers
-* **Enhanced Species**: Audio, conservation status, best viewing times
-* **Park Details**: Difficulty levels, activities, best visiting months
-* **Comparison Tool**: Compare multiple parks side-by-side
+* **Park Comparison**: Side-by-side comparison of multiple parks
 
 ## 🎯 Existing Features
 * **Authentication**: Secure JWT-based authentication
