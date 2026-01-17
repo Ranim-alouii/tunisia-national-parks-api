@@ -1,5 +1,26 @@
-// Enhanced Navigation with Dropdowns and Accessibility
-document.addEventListener('DOMContentLoaded', function() {
+// Enhanced Navigation with Dropdowns and Accessibility - Modular Version
+
+// Load modules dynamically
+Promise.all([
+    import('./modules/api.js'),
+    import('./modules/ui.js')
+]).then(([apiModule, uiModule]) => {
+    console.log('Navigation modules loaded successfully');
+
+    // Initialize navigation when DOM is ready and modules are loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeNavigation);
+    } else {
+        initializeNavigation();
+    }
+
+}).catch(error => {
+    console.error('Failed to load navigation modules:', error);
+    // Fallback to basic functionality
+    document.addEventListener('DOMContentLoaded', initializeNavigation);
+});
+
+function initializeNavigation() {
     // Mobile menu toggle
     const mobileToggle = document.getElementById('mobileMenuToggle');
     const navMenu = document.getElementById('navMenu');
@@ -209,4 +230,4 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showLoading = showLoading;
     window.hideLoading = hideLoading;
     window.trapFocus = trapFocus;
-});
+}

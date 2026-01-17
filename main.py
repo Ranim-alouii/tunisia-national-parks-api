@@ -312,14 +312,15 @@ async def add_security_headers(request: Request, call_next):
     """Add security headers to all responses"""
     response = await call_next(request)
 
-    # Content Security Policy
+    # Content Security Policy - Enhanced for external integrations
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+        "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://maps.googleapis.com https://www.google.com https://www.gstatic.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com; "
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
-        "img-src 'self' data: https: blob:; "
-        "connect-src 'self' https://api.unsplash.com https://api.openweathermap.org https://maps.googleapis.com; "
+        "img-src 'self' data: https: blob: https://images.unsplash.com https://maps.gstatic.com https://maps.googleapis.com https://*.googleusercontent.com https://*.ggpht.com; "
+        "connect-src 'self' https://api.unsplash.com https://api.openweathermap.org https://maps.googleapis.com https://www.google.com https://newsapi.org https://en.wikipedia.org https://maps.googleapis.com; "
+        "frame-src https://www.google.com https://maps.google.com https://www.youtube.com; "
         "frame-ancestors 'none';"
     )
 
