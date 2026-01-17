@@ -1,0 +1,33 @@
+# Development overrides for docker-compose.yml
+# This file is automatically merged with docker-compose.yml in development
+
+version: '3.8'
+
+services:
+  app:
+    # Development-specific settings
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=INFO
+    volumes:
+      # Mount source code for live reloading (if using a development server)
+      - .:/app:cached
+    # Override command for development (if you want auto-reload)
+    # command: uvicorn main:app --host 0.0.0.0 --port 8002 --reload
+
+  nginx:
+    # Disable nginx in development to access app directly
+    profiles:
+      - nginx
+
+  # Add development database if needed (SQLite works fine for now)
+  # db:
+  #   image: postgres:15
+  #   environment:
+  #     POSTGRES_DB: tunisia_parks_dev
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: password
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data

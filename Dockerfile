@@ -18,7 +18,7 @@ COPY . .
 RUN mkdir -p uploads
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8002
 
 # Run the application
 CMD ["python", "main.py"]

@@ -2,13 +2,12 @@ version: '3.8'
 
 services:
   app:
-    build: .
-    ports:
-      - "8002:8002"
+    build:
+      context: .
+      dockerfile: Dockerfile
     env_file:
-      - .env
+      - .env.production
     volumes:
-      - .:/app
       - ./uploads:/app/uploads
       - ./tunisia_parks.db:/app/tunisia_parks.db
     restart: unless-stopped
@@ -17,7 +16,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     depends_on:
       - redis
     networks:
@@ -26,11 +25,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -52,11 +47,27 @@ services:
     depends_on:
       - app
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - tunisia-parks-network
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - ./ssl-data:/var/lib/letsencrypt
+    command: certonly --webroot --webroot-path=/var/www/certbot --email admin@tunisia-parks.tn --agree-tos --no-eff-email -d tunisia-parks.tn -d www.tunisia-parks.tn
     networks:
       - tunisia-parks-network
 
 volumes:
   redis_data:
+  ssl:
+  ssl-data:
 
 networks:
   tunisia-parks-network:
