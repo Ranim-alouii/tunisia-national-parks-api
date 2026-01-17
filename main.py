@@ -185,6 +185,12 @@ Some endpoints require authentication. Use JWT tokens obtained from `/auth/token
     redoc_url="/api/redoc"
 )
 
+# Include routers immediately after app creation
+app.include_router(parks.router)
+app.include_router(species.router)
+app.include_router(trails.router)
+app.include_router(auth.router)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -223,12 +229,6 @@ logging.basicConfig(level=logging.INFO)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 templates = Jinja2Templates(directory="templates")
-
-# Include routers
-app.include_router(parks.router)
-app.include_router(species.router)
-app.include_router(trails.router)
-app.include_router(auth.router)
 
 # Fallback static file routes
 @app.get("/static/{path:path}")
@@ -278,13 +278,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
-
-@app.get("/{full_path:path}")
-async def catch_all_frontend(full_path: str):
-    # Serve index.html for all non-API routes to enable SPA routing
-    if full_path.startswith("api/") or full_path in ["static", "uploads"]:
-        raise HTTPException(status_code=404, detail="Not found")
-    return FileResponse("templates/index.html")
 
 # Health check
 @app.get("/api/health")
@@ -527,6 +520,14 @@ async def chat_with_bot(request: dict):
         "response": response,
         "suggestions": suggestions
     }
+
+# Catch-all frontend route - MUST be at the absolute bottom to prevent stealing API requests
+@app.get("/{full_path:path}")
+async def catch_all_frontend(full_path: str):
+    # Serve index.html for all non-API routes to enable SPA routing
+    if full_path.startswith("api/") or full_path in ["static", "uploads"]:
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse("templates/index.html")
 
 # Lifespan event
 @asynccontextmanager
