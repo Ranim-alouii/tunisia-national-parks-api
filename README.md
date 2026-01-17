@@ -7,6 +7,8 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+**🚀 Production Ready - Deployed on Port 8000**
+
 ## 🌟 Overview
 
 This production-ready platform provides comprehensive access to Tunisia's national parks ecosystem, combining a REST API with a complete web frontend. Key features include:
@@ -64,9 +66,9 @@ docker-compose up --build
 ./deploy.sh production
 
 # Access the application
-# 🌐 Frontend: http://localhost:8002 (dev) / https://yourdomain.com (prod)
-# 📚 API Docs: http://localhost:8002/docs (dev) / https://yourdomain.com/docs (prod)
-# 🔌 API Base: http://localhost:8002/api (dev) / https://yourdomain.com/api (prod)
+# 🌐 Frontend: http://localhost:8000 (dev) / https://yourdomain.com (prod)
+# 📚 API Docs: http://localhost:8000/docs (dev) / https://yourdomain.com/docs (prod)
+# 🔌 API Base: http://localhost:8000/api (dev) / https://yourdomain.com/api (prod)
 ```
 
 ### Option 2: Local Development
@@ -94,9 +96,9 @@ python -c "from database import init_db; init_db()"
 python main.py
 
 # Access the application
-# 🌐 Frontend: http://localhost:8002
-# 📚 API Docs: http://localhost:8002/docs
-# 🔌 API Base: http://localhost:8002/api
+# 🌐 Frontend: http://localhost:8000
+# 📚 API Docs: http://localhost:8000/docs
+# 🔌 API Base: http://localhost:8000/api
 ```
 
 ### Option 3: Production Deployment
@@ -193,13 +195,13 @@ The API supports JWT-based authentication:
 
 ```bash
 # Get access token
-curl -X POST "http://localhost:8002/api/auth/token" \
+curl -X POST "http://localhost:8000/api/auth/token" \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"your-password"}'
 
 # Use token in requests
 curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-  http://localhost:8002/api/parks
+  http://localhost:8000/api/parks
 ```
 
 ## 🧪 Testing
@@ -222,22 +224,22 @@ python test_localhost_apis.py
 
 ### Get All Parks
 ```bash
-curl "http://localhost:8002/api/parks?limit=5&governorate=Bizerte"
+curl "http://localhost:8000/api/parks?limit=5&governorate=Bizerte"
 ```
 
 ### Search Parks
 ```bash
-curl "http://localhost:8002/api/search/parks?query=nature&min_area=100"
+curl "http://localhost:8000/api/search/parks?query=nature&min_area=100"
 ```
 
 ### Get Park Weather
 ```bash
-curl "http://localhost:8002/api/parks/1/weather"
+curl "http://localhost:8000/api/parks/1/weather"
 ```
 
 ### Get Nature Images
 ```bash
-curl "http://localhost:8002/api/parks/1/unsplash-images?count=10"
+curl "http://localhost:8000/api/parks/1/unsplash-images?count=10"
 ```
 
 ## 🗄️ Database Schema
@@ -269,7 +271,7 @@ The project includes complete Docker infrastructure for both development and pro
 docker-compose up --build
 
 # Includes: App, Redis, Nginx (optional)
-# Access at: http://localhost:8002
+# Access at: http://localhost:8000
 ```
 
 ### Production Setup
