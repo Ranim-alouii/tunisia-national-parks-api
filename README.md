@@ -15,7 +15,7 @@ A comprehensive RESTful API for Tunisia's 18 national parks, built with **FastAP
 - **User Reviews**: Star ratings, comments, and park recommendations
 - **Wildlife Sightings**: User-reported animal sightings with verification
 - **Gamification System**: Achievement badges, points, levels, and user progression
-- **Park Comparison**: Side-by-side comparison of multiple parks
+- **Park Comparison**: Side-by-side comparison of multiple parks with interactive dashboard
 
 ### 🌤️ Advanced Integration
 - **Real-time Weather**: Current conditions and 5-day forecasts for all parks
@@ -29,6 +29,15 @@ A comprehensive RESTful API for Tunisia's 18 national parks, built with **FastAP
 - **CORS Support**: Cross-origin requests enabled
 - **Validation**: Pydantic models with strict data validation
 - **Error Handling**: Consistent JSON error responses
+
+### 📊 Monitoring & Observability
+- **Prometheus Metrics**: Comprehensive API monitoring and alerting
+- **Grafana Dashboards**: Real-time visualization of system performance
+- **CI/CD Pipeline**: Automated testing and deployment with GitHub Actions
+
+### 🎨 Frontend Components
+- **Park Comparison Dashboard**: Interactive React component for comparing parks
+- **Health Onboarding Form**: User health and preference collection for personalized recommendations
 
 ## 🚀 Getting Started
 
@@ -271,18 +280,37 @@ curl -X POST "http://127.0.0.1:8000/api/parks/1/reviews" \
 
 ```
 tunisia-national-parks-api/
-├── main.py                 # FastAPI application
-├── models.py              # SQLModel database models
-├── database.py            # Database connection & init
-├── config.py              # Configuration settings
-├── utils.py               # Utility functions
-├── weather_service.py     # Weather API integration
-├── seed_complete_parks.py # Database seeding
-├── templates/             # Jinja2 templates
-├── static/                # CSS, JS, images
-├── uploads/               # User uploaded files
-├── requirements.txt       # Python dependencies
-├── docker-compose.yml     # Docker setup
+├── main.py                    # FastAPI application
+├── main_production.py         # Production server
+├── models.py                  # SQLModel database models
+├── database.py                # Database connection & init
+├── config.py                  # Configuration settings
+├── config_validation.py       # Configuration validation
+├── utils.py                   # Utility functions
+├── weather_service.py         # Weather API integration
+├── recommendation_engine.py   # Recommendation system
+├── routers/                   # API route handlers
+│   ├── auth.py
+│   ├── parks.py
+│   └── species.py
+├── tests/                     # Unit and integration tests
+│   ├── conftest.py
+│   ├── test_parks.py
+│   └── test_species.py
+├── templates/                 # Jinja2 HTML templates
+├── static/                    # Static assets (CSS, JS)
+├── uploads/                   # User uploaded files
+├── frontend/                  # Frontend components
+├── monitoring/                # Monitoring setup
+│   ├── prometheus.yml
+│   └── grafana/
+├── .github/workflows/         # CI/CD pipelines
+├── ParkComparisonDashboard.jsx # React park comparison component
+├── HealthOnboardingForm.jsx   # React health onboarding form
+├── requirements.txt           # Python dependencies
+├── docker-compose.yml         # Docker setup
+├── docker-compose.monitoring.yml # Monitoring stack
+├── pytest.ini                 # Test configuration
 └── README.md
 ```
 
