@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+
+{% block title %}{{ park.name }} - Parcs Nationaux de Tunisie{% endblock %}
+
+{% block content %}
+
+<!-- Park Header -->
+<section class="park-header" id="parkHeader">
+    <div class="park-header-overlay"></div>
+    <div class="container">
+        <div class="park-header-content animate-fade-in-up">
+            <h1>{{ park.name }}</h1>
+            <div class="park-meta">
+                <span><i class="fas fa-map-marker-alt"></i> {{ park.governorate }}</span>
+                <span><i class="fas fa-ruler-combined"></i> {{ park.area_km2 }} km²</span>
+                <span id="parkRating"></span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.park-header {
+    position: relative;
+    height: 60vh;
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 3rem;
+    background-size: cover;
+    background-position: center;
+    color: white;
+}
+
+.park-header-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 100%);
+}
+
+.park-header-content {
+    position: relative;
+    z-index: 1;
+}
+
+.park-header h1 {
+    color: white;
+    font-size: clamp(2rem, 5vw, 4rem);
+    text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.park-meta {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+    font-size: 1.125rem;
+}
+
+.park-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+</style>
+
+<!-- Quick Actions Bar -->
+<div style="background: white; box-shadow: var(--shadow-sm); position: sticky; top: 80px; z-index: 100;">
+    <div class="container">
+        <div style="display: flex; gap: 1rem; padding: 1rem 0; overflow-x: auto;">
+            <a href="#info" class="btn btn-outline btn-sm"><i class="fas fa-info-circle"></i> Informations</a>
+            <a href="#trails" class="btn btn-outline btn-sm"><i class="fas fa-hiking"></i> Sentiers</a>
+            <a href="#species" class="btn btn-outline btn-sm"><i class="fas fa-paw"></i> Biodiversité</a>
+            <a href="#reviews" class="btn btn-outline btn-sm"><i class="fas fa-star"></i> Avis</a>
+            <a href="#weather" class="btn btn-outline btn-sm"><i class="fas fa-cloud-sun"></i> Météo</a>
+            <button onclick="getDirections()" class="btn btn-primary btn-sm">
+                <i class="fas fa-directions"></i> Itinéraire
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<section class="section">
+    <div class="container">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+            <!-- Left Column -->
+            <div>
+                <!-- Description -->
+                <div class="card" id="info" style="margin-bottom: 2rem;">
+                    <div class="card-content">
+                        <h2><i class="fas fa-book-open"></i> À Propos</h2>
+                        <p>{{ park.description }}</p>
+
+                        <div id="parkDetails" style="margin-top: 2rem;">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trails Section -->
+                <div class="card" id="trails" style="margin-bottom: 2rem;">
+                    <div class="card-content">
+                        <h2><i class="fas fa-hiking"></i> Sentiers de Randonnée</h2>
+                        <div id="trailsList">
+                            <p style="color: var(--text-secondary);">Chargement des sentiers...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Species Section -->
+                <div class="card" id="species" style="margin-bottom: 2rem;">
+                    <div class="card-content">
+                        <h2><i class="fas fa-paw"></i> Biodiversité</h2>
+                        <div id="speciesList" class="grid grid-3">
+                            <p style="color: var(--text-secondary);">Chargement de la biodiversité...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reviews Section -->
+                <div class="card" id="reviews" style="margin-bottom: 2rem;">
+                    <div class="card-content">
+                        <h2><i class="fas fa-star"></i> Avis des Visiteurs</h2>
+
+                        <!-- Add Review Button -->
+                        <button onclick="openReviewModal()" class="btn btn-primary" style="margin-bottom: 2rem;">
+                            <i class="fas fa-plus"></i> Ajouter un Avis
+                        </button>
+
+                        <div id="reviewsList">
+                            <p style="color: var(--text-secondary);">Chargement des avis...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column (Sidebar) -->
+            <div>
+                <!-- Weather Card -->
+                <div class="card" id="weather" style="margin-bottom: 2rem;">
+                    <div class="card-content">
+                        <h3><i class="fas fa-cloud-sun"></i> Météo Actuelle</h3>
+                        <div id="weatherInfo">
+                            <p style="color: var(--text-secondary);">Chargement...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Card -->
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-content">
+                        <h3><i class="fas fa-map-marked-alt"></i> Localisation</h3>
+                        <div id="parkMap" style="height: 300px; border-radius: var(--radius-md); overflow: hidden; margin-top: 1rem;"></div>
+                        <button onclick="getDirections()" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                            <i class="fas fa-directions"></i> Obtenir l'Itinéraire
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Info Card -->
+                <div class="card">
+                    <div class="card-content">
+                        <h3><i class="fas fa-info-circle"></i> Infos Pratiques</h3>
+                        <div id="quickInfo" style="margin-top: 1rem;">
+                            <!-- Will be populated -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Review Modal -->
+<div class="modal-overlay" id="reviewModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Ajouter un Avis</h3>
+            <button class="modal-close" onclick="closeReviewModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="reviewForm">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Votre Nom</label>
+                    <input type="text" name="author_name" required style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Note</label>
+                    <div class="rating-input" id="ratingInput">
+                        <i class="far fa-star" data-rating="1"></i>
+                        <i class="far fa-star" data-rating="2"></i>
+                        <i class="far fa-star" data-rating="3"></i>
+                        <i class="far fa-star" data-rating="4"></i>
+                        <i class="far fa-star" data-rating="5"></i>
+                    </div>
+                    <input type="hidden" name="rating" id="ratingValue" required>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Titre</label>
+                    <input type="text" name="title" required style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Commentaire</label>
+                    <textarea name="comment" required rows="5" style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);"></textarea>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Date de Visite (optionnel)</label>
+                    <input type="date" name="visit_date" style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeReviewModal()" class="btn btn-outline">Annuler</button>
+            <button onclick="submitReview()" class="btn btn-primary">Publier</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.rating-input {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 2rem;
+}
+
+.rating-input i {
+    cursor: pointer;
+    color: #ddd;
+    transition: var(--transition);
+}
+
+.rating-input i:hover,
+.rating-input i.active {
+    color: #ffc107;
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Simple literals instead of a big JSON object – avoids VS Code parser issues
+const parkId = {{ park.id }};
+const parkLat = {{ park.latitude }};
+const parkLng = {{ park.longitude }};
+const parkName = "{{ park.name | replace('"'\\"') }}";
+const parkImages = {{ park.images | default([]) | tojson }};
+
+// Initialize map
+let map;
+function initMap() {
+    map = L.map('parkMap').setView([parkLat, parkLng], 10);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    L.marker([parkLat, parkLng])
+        .addTo(map)
+        .bindPopup(`<b>${parkName}</b>`);
+}
+
+// Set header background
+document.getElementById('parkHeader').style.backgroundImage =
+    parkImages && parkImages.length > 0
+        ? `url(${parkImages[0]})`
+        : 'linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%)';
+
+// Load trails
+async function loadTrails() {
+    try {
+        const response = await fetch(`/api/parks/${parkId}/trails`);
+        const trails = await response.json();
+
+        const container = document.getElementById('trailsList');
+
+        if (trails.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-secondary);">Aucun sentier disponible pour ce parc.</p>';
+            return;
+        }
+
+        container.innerHTML = trails.map(trail => `
+            <div class="card" style="margin-bottom: 1rem;">
+                <div class="card-content">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                        <h4 style="margin: 0;">${trail.name}</h4>
+                        <span class="difficulty-badge difficulty-${trail.difficulty}">
+                            ${trail.difficulty.charAt(0).toUpperCase() + trail.difficulty.slice(1)}
+                        </span>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">${trail.description}</p>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; font-size: 0.875rem;">
+                        <div>
+                            <i class="fas fa-route"></i> <strong>${trail.length_km} km</strong>
+                        </div>
+                        <div>
+                            <i class="fas fa-clock"></i> <strong>${trail.duration_hours}h</strong>
+                        </div>
+                        <div>
+                            <i class="fas fa-mountain"></i> <strong>${trail.elevation_gain || 0}m</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading trails:', error);
+    }
+}
+
+// Load species
+async function loadSpecies() {
+    try {
+        const response = await fetch(`/api/parks/${parkId}/species`);
+        const species = await response.json();
+
+        const container = document.getElementById('speciesList');
+
+        if (species.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-secondary);">Aucune espèce répertoriée.</p>';
+            return;
+        }
+
+        container.innerHTML = species.map(s => `
+            <div class="card hover-lift">
+                <img src="${s.image_url || 'https://via.placeholder.com/200'}"
+                     alt="${s.name}"
+                     style="width: 100%; height: 150px; object-fit: cover;">
+                <div class="card-content">
+                    <span class="badge ${s.type === 'animal' ? 'badge-info' : 'badge-success'}">
+                        <i class="fas fa-${s.type === 'animal' ? 'paw' : 'leaf'}"></i>
+                    </span>
+                    <h5 style="margin-top: 0.5rem; margin-bottom: 0.25rem;">${s.name}</h5>
+                    <p style="font-size: 0.75rem; font-style: italic; color: var(--text-secondary);">${s.scientific_name}</p>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading species:', error);
+    }
+}
+
+// Load reviews
+async function loadReviews() {
+    try {
+        const response = await fetch(`/api/parks/${parkId}/reviews`);
+        const reviews = await response.json();
+
+        const container = document.getElementById('reviewsList');
+
+        if (reviews.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-secondary);">Aucun avis pour le moment. Soyez le premier!</p>';
+            return;
+        }
+
+        container.innerHTML = reviews.map(r => `
+            <div class="card" style="margin-bottom: 1rem;">
+                <div class="card-content">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                        <div>
+                            <h4 style="margin: 0;">${r.title}</h4>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                                <div class="rating-stars">
+                                    ${'<i class="fas fa-star"></i>'.repeat(r.rating)}
+                                    ${'<i class="far fa-star"></i>'.repeat(5 - r.rating)}
+                                </div>
+                                <span style="font-size: 0.875rem; color: var(--text-secondary);">
+                                    par ${r.author_name}
+                                </span>
+                            </div>
+                        </div>
+                        ${r.visit_date ? `<span style="font-size: 0.875rem; color: var(--text-secondary);">${new Date(r.visit_date).toLocaleDateString('fr-FR')}</span>` : ''}
+                    </div>
+                    <p style="color: var(--text-secondary);">${r.comment}</p>
+                </div>
+            </div>
+        `).join('');
+
+        if (reviews.length > 0) {
+            const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+            document.getElementById('parkRating').innerHTML = `
+                <div class="rating">
+                    <div class="rating-stars">
+                        ${'<i class="fas fa-star"></i>'.repeat(Math.round(avgRating))}
+                        ${'<i class="far fa-star"></i>'.repeat(5 - Math.round(avgRating))}
+                    </div>
+                    <span class="rating-value">${avgRating.toFixed(1)}</span>
+                    <span class="rating-count">(${reviews.length} avis)</span>
+                </div>
+            `;
+        }
+
+    } catch (error) {
+        console.error('Error loading reviews:', error);
+    }
+}
+
+// Load weather
+async function loadWeather() {
+    try {
+        const response = await fetch(`/api/parks/${parkId}/weather`);
+        const data = await response.json();
+        const weather = data.weather;
+
+        document.getElementById('weatherInfo').innerHTML = `
+            <div style="text-align: center;">
+                <img src="${weather.icon_url}" alt="${weather.description}" style="width: 100px; height: 100px; margin: 0 auto;">
+                <div style="font-size: 3rem; font-weight: 800; color: var(--primary);">${weather.temperature}°C</div>
+                <div style="color: var(--text-secondary); margin-top: 0.5rem;">${weather.description}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; font-size: 0.875rem;">
+                    <div><i class="fas fa-temperature-low"></i> Min: ${weather.temp_min}°C</div>
+                    <div><i class="fas fa-temperature-high"></i> Max: ${weather.temp_max}°C</div>
+                    <div><i class="fas fa-tint"></i> Humidité: ${weather.humidity}%</div>
+                    <div><i class="fas fa-wind"></i> Vent: ${weather.wind_speed} m/s</div>
+                </div>
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Error loading weather:', error);
+        document.getElementById('weatherInfo').innerHTML = '<p style="color: var(--text-secondary);">Météo non disponible</p>';
+    }
+}
+
+// Get directions
+function getDirections() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+            const url = `https://www.google.com/maps/dir/?api=1&origin=${position.coords.latitude},${position.coords.longitude}&destination=${parkLat},${parkLng}`;
+            window.open(url, '_blank');
+        }, () => {
+            window.open(`https://www.google.com/maps?q=${parkLat},${parkLng}`, '_blank');
+        });
+    } else {
+        window.open(`https://www.google.com/maps?q=${parkLat},${parkLng}`, '_blank');
+    }
+}
+
+// Review modal functions
+let selectedRating = 0;
+
+function openReviewModal() {
+    document.getElementById('reviewModal').classList.add('active');
+}
+
+function closeReviewModal() {
+    document.getElementById('reviewModal').classList.remove('active');
+    document.getElementById('reviewForm').reset();
+    selectedRating = 0;
+    document.querySelectorAll('.rating-input i').forEach(star => star.classList.remove('active'));
+}
+
+// Rating input
+document.querySelectorAll('.rating-input i').forEach(star => {
+    star.addEventListener('click', () => {
+        selectedRating = parseInt(star.dataset.rating, 10);
+        document.getElementById('ratingValue').value = selectedRating;
+
+        document.querySelectorAll('.rating-input i').forEach((s, index) => {
+            if (index < selectedRating) {
+                s.classList.add('active');
+            } else {
+                s.classList.remove('active');
+            }
+        });
+    });
+});
+
+// Submit review
+async function submitReview() {
+    const form = document.getElementById('reviewForm');
+    const formData = new FormData(form);
+
+    if (!selectedRating) {
+        alert('Veuillez sélectionner une note');
+        return;
+    }
+
+    const data = {
+        author_name: formData.get('author_name'),
+        rating: selectedRating,
+        title: formData.get('title'),
+        comment: formData.get('comment'),
+        visit_date: formData.get('visit_date') || null
+    };
+
+    try {
+        const response = await fetch(`/api/parks/${parkId}/reviews`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            closeReviewModal();
+            loadReviews();
+            alert('Merci pour votre avis!');
+        }
+    } catch (error) {
+        console.error('Error submitting review:', error);
+        alert('Erreur lors de l\'envoi de l\'avis');
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    initMap();
+    loadTrails();
+    loadSpecies();
+    loadReviews();
+    loadWeather();
+});
+</script>
+{% endblock %}

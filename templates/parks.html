@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Tous les Parcs - Parcs Nationaux de Tunisie{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h1 class="section-title">Tous les Parcs Nationaux</h1>
+            <p class="section-subtitle">Découvrez les 17 parcs nationaux de Tunisie</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label>Gouvernorat:</label>
+                <select class="filter-select" id="governorateFilter">
+                    <option value="">Tous</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Superficie min (km²):</label>
+                <input type="number" class="filter-input" id="minAreaFilter" placeholder="0">
+            </div>
+            <div class="filter-group">
+                <label>Superficie max (km²):</label>
+                <input type="number" class="filter-input" id="maxAreaFilter" placeholder="1000">
+            </div>
+            <button class="filter-button" onclick="applyFilters()">
+                <i class="fas fa-search"></i> Filtrer
+            </button>
+        </div>
+
+        <!-- Parks Grid -->
+        <div class="grid grid-3" id="parksGrid">
+            <!-- Parks will be loaded here -->
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" style="text-align: center; padding: 2rem;">
+            <div class="spinner"></div>
+            <p>Chargement des parcs...</p>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allParks = [];
+
+async function loadParks() {
+    try {
+        const response = await fetch('/api/parks');
+        allParks = await response.json();
+        displayParks(allParks);
+        populateGovernorates();
+    } catch (error) {
+        console.error('Error loading parks:', error);
+    }
+}
+
+function displayParks(parks) {
+    const container = document.getElementById('parksGrid');
+    container.innerHTML = '';
+
+    parks.forEach(park => {
+        const card = document.createElement('div');
+        card.className = 'card hover-lift';
+
+        const imageUrl = park.images && park.images.length > 0
+            ? park.images[0]
+            : 'https://via.placeholder.com/400x250?text=' + encodeURIComponent(park.name);
+
+        card.innerHTML = `
+            <div class="zoom-container">
+                <img src="${imageUrl}" alt="${park.name}" class="card-image">
+            </div>
+            <div class="card-content">
+                <h3 class="card-title">${park.name}</h3>
+                <div class="card-meta">
+                    <span><i class="fas fa-map-marker-alt"></i> ${park.governorate}</span>
+                    <span><i class="fas fa-ruler-combined"></i> ${park.area_km2} km²</span>
+                </div>
+                <p class="card-description">${park.description.substring(0, 120)}...</p>
+                <a href="/parks/${park.id}" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-arrow-right"></i> Découvrir
+                </a>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+
+    document.getElementById('loading').style.display = 'none';
+}
+
+function populateGovernorates() {
+    const select = document.getElementById('governorateFilter');
+    const governorates = [...new Set(allParks.map(p => p.governorate))].sort();
+
+    governorates.forEach(gov => {
+        const option = document.createElement('option');
+        option.value = gov;
+        option.textContent = gov;
+        select.appendChild(option);
+    });
+}
+
+function applyFilters() {
+    const governorate = document.getElementById('governorateFilter').value;
+    const minArea = parseFloat(document.getElementById('minAreaFilter').value) || 0;
+    const maxArea = parseFloat(document.getElementById('maxAreaFilter').value) || Infinity;
+
+    let filtered = allParks;
+
+    if (governorate) {
+        filtered = filtered.filter(p => p.governorate === governorate);
+    }
+
+    filtered = filtered.filter(p => p.area_km2 >= minArea && p.area_km2 <= maxArea);
+
+    displayParks(filtered);
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', loadParks);
+</script>
+{% endblock %}

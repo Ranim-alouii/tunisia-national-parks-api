@@ -401,12 +401,8 @@ def seed_complete_database():
         existing_species = session.exec(select(SpeciesDB)).all()
         
         if existing_parks or existing_species:
-            print(f"⚠️  Database contains {len(existing_parks)} parks and {len(existing_species)} species")
-            response = input("Clear and re-seed with complete data? (yes/no): ").lower()
-            if response != "yes":
-                print("Cancelled. Exiting.")
-                return
-            
+            print(f"⚠️  Database contains {len(existing_parks)} parks and {len(existing_species)} species - clearing and re-seeding...")
+
             # Clear database
             for species in existing_species:
                 session.delete(species)
@@ -419,6 +415,8 @@ def seed_complete_database():
         print("📍 Adding 17 National Parks...")
         park_objects = {}
         for park_data in TUNISIA_PARKS_COMPLETE:
+            # Add required google_maps_url
+            park_data["google_maps_url"] = f"https://www.google.com/maps?q={park_data['latitude']},{park_data['longitude']}"
             park = ParkDB(**park_data)
             session.add(park)
             session.flush()  # Get ID immediately
@@ -442,7 +440,7 @@ def seed_complete_database():
             for park_name_part in park_names:
                 for full_park_name, park_obj in park_objects.items():
                     if park_name_part.lower() in full_park_name.lower():
-                        link = ParkSpeciesLink(park_id=park_obj.id, species_id=species.id)
+                        link = ParkSpeciesLink(park_id=park_obj.id, species_id=species.species_id)
                         session.add(link)
             
             species_count += 1

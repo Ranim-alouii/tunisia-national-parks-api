@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Biodiversité - Parcs Nationaux de Tunisie{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h1 class="section-title">Biodiversité</h1>
+            <p class="section-subtitle">Découvrez la faune et la flore des parcs tunisiens</p>
+        </div>
+
+        <div class="grid grid-4" id="speciesGrid">
+            <!-- Species will be loaded here -->
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadSpecies() {
+    try {
+        const response = await fetch('/api/species');
+        const species = await response.json();
+
+        const container = document.getElementById('speciesGrid');
+        container.innerHTML = '';
+
+        species.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'card hover-lift';
+
+            const imageUrl = s.image_url || 'https://via.placeholder.com/300x200?text=' + encodeURIComponent(s.name);
+
+            card.innerHTML = `
+                <img src="${imageUrl}" alt="${s.name}" style="width: 100%; height: 200px; object-fit: cover;">
+                <div class="card-content">
+                    <span class="badge ${s.type === 'animal' ? 'badge-info' : 'badge-success'}">
+                        <i class="fas fa-${s.type === 'animal' ? 'paw' : 'leaf'}"></i>
+                        ${s.type === 'animal' ? 'Animal' : 'Plante'}
+                    </span>
+                    <h4 style="margin-top: 0.5rem;">${s.name}</h4>
+                    <p style="font-style: italic; color: var(--text-secondary); font-size: 0.875rem;">${s.scientific_name}</p>
+                </div>
+            `;
+
+            container.appendChild(card);
+        });
+    } catch (error) {
+        console.error('Error loading species:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadSpecies);
+</script>
+{% endblock %}

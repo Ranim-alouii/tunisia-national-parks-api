@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}Accueil - Parcs Nationaux de Tunisie{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-background"></div>
+    <div class="hero-content">
+        <h1 class="animate-fade-in-up">Explorez les Trésors Naturels de la Tunisie</h1>
+        <p class="animate-fade-in-up" style="animation-delay: 0.2s;">
+            Découvrez 17 parcs nationaux exceptionnels, une biodiversité unique et des paysages à couper le souffle.
+        </p>
+        <div class="hero-buttons animate-fade-in-up" style="animation-delay: 0.4s;">
+            <a href="/parks" class="btn btn-primary btn-lg">
+                <i class="fas fa-tree"></i> Explorer les Parcs
+            </a>
+            <a href="/map" class="btn btn-secondary btn-lg">
+                <i class="fas fa-map-marked-alt"></i> Voir la Carte
+            </a>
+            <a href="/chat" class="btn btn-outline btn-lg" style="border-color: white; color: white;">
+                <i class="fas fa-robot"></i> Demander à l'IA
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Statistics Section -->
+<section class="section">
+    <div class="container">
+        <div class="stats-grid stagger-children">
+            <div class="stat-card">
+                <div class="stat-card-icon"><i class="fas fa-mountain"></i></div>
+                <div class="stat-card-value" id="parksCount">17</div>
+                <div class="stat-card-label">Parcs Nationaux</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-icon"><i class="fas fa-paw"></i></div>
+                <div class="stat-card-value" id="speciesCount">250+</div>
+                <div class="stat-card-label">Espèces Protégées</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-icon"><i class="fas fa-hiking"></i></div>
+                <div class="stat-card-value" id="trailsCount">45+</div>
+                <div class="stat-card-label">Sentiers de Randonnée</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-icon"><i class="fas fa-map-marked"></i></div>
+                <div class="stat-card-value">150k</div>
+                <div class="stat-card-label">Hectares Protégés</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Parks Section -->
+<section class="section" style="background: white;">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Parcs à la Une</h2>
+            <p class="section-subtitle">
+                Découvrez nos parcs les plus visités et les plus spectaculaires
+            </p>
+        </div>
+
+        <div class="grid grid-3 stagger-children" id="featuredParks">
+            <!-- Parks will be loaded dynamically -->
+            <div class="card skeleton">
+                <div class="skeleton-image"></div>
+                <div class="card-content">
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                </div>
+            </div>
+            <div class="card skeleton">
+                <div class="skeleton-image"></div>
+                <div class="card-content">
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                </div>
+            </div>
+            <div class="card skeleton">
+                <div class="skeleton-image"></div>
+                <div class="card-content">
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="/parks" class="btn btn-primary">
+                <i class="fas fa-th"></i> Voir Tous les Parcs
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Pourquoi Visiter Nos Parcs?</h2>
+        </div>
+
+        <div class="grid grid-3 stagger-children">
+            <div class="card hover-lift">
+                <div class="card-content" style="text-align: center;">
+                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
+                        <i class="fas fa-binoculars"></i>
+                    </div>
+                    <h3>Biodiversité Unique</h3>
+                    <p>Observez des espèces rares et endémiques dans leur habitat naturel. Plus de 250 espèces protégées vous attendent.</p>
+                </div>
+            </div>
+
+            <div class="card hover-lift">
+                <div class="card-content" style="text-align: center;">
+                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <h3>Sentiers Aménagés</h3>
+                    <p>Profitez de plus de 45 sentiers balisés, adaptés à tous les niveaux, du débutant au randonneur expérimenté.</p>
+                </div>
+            </div>
+
+            <div class="card hover-lift">
+                <div class="card-content" style="text-align: center;">
+                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Espaces Protégés</h3>
+                    <p>Visitez des zones protégées où la nature est préservée pour les générations futures.</p>
+                </div>
+            </div>
+
+            <div class="card hover-lift">
+                <div class="card-content" style="text-align: center;">
+                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
+                        <i class="fas fa-sun"></i>
+                    </div>
+                    <h3>Climat Idéal</h3>
+                    <p>Profitez d'un climat méditerranéen agréable pour vos visites toute l'année.</p>
+                </div>
+            </div>
+
+            <div class="card hover-lift">
+                <div class="card-content" style="text-align: center;">
+                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <h3>Paysages Époustouflants</h3>
+                    <p>Des montagnes aux déserts, en passant par les zones humides, chaque parc offre des panoramas uniques.</p>
+                </div>
+            </div>
+
+            <div class="card hover-lift">
+                <div class="card-content" style="text-align: center;">
+                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Accueil Familial</h3>
+                    <p>Des activités pour toute la famille dans un environnement sûr et accueillant.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Wildlife Section -->
+<section class="section" style="background: white;">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Faune & Flore</h2>
+            <p class="section-subtitle">
+                Découvrez la richesse de la biodiversité tunisienne
+            </p>
+        </div>
+
+        <div class="grid grid-4" id="featuredSpecies">
+            <!-- Species will be loaded dynamically -->
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="/species" class="btn btn-outline">
+                <i class="fas fa-leaf"></i> Voir Toute la Biodiversité
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action -->
+<section class="section" style="background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); color: white;">
+    <div class="container" style="text-align: center;">
+        <h2 style="color: white; margin-bottom: 1rem;">Prêt pour l'Aventure?</h2>
+        <p style="font-size: 1.25rem; color: rgba(255,255,255,0.9); margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+            Planifiez votre visite dès maintenant et explorez les merveilles naturelles de la Tunisie.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="/map" class="btn btn-secondary btn-lg">
+                <i class="fas fa-compass"></i> Planifier ma Visite
+            </a>
+            <a href="/trails" class="btn btn-outline" style="border-color: white; color: white;">
+                <i class="fas fa-hiking"></i> Explorer les Sentiers
+            </a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Load featured parks
+async function loadFeaturedParks() {
+    try {
+        const response = await fetch('/api/parks');
+        const parks = await response.json();
+        
+        // Get top 3 parks (you can customize this logic)
+        const featured = parks.slice(0, 3);
+        
+        const container = document.getElementById('featuredParks');
+        container.innerHTML = '';
+        
+        featured.forEach(park => {
+            const card = document.createElement('div');
+            card.className = 'card hover-lift';
+            
+            const imageUrl = park.images && park.images.length > 0 
+                ? park.images[0] 
+                : 'https://via.placeholder.com/400x250?text=' + encodeURIComponent(park.name);
+            
+            card.innerHTML = `
+                <div class="zoom-container">
+                    <img src="${imageUrl}" alt="${park.name}" class="card-image">
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">${park.name}</h3>
+                    <div class="card-meta">
+                        <span><i class="fas fa-map-marker-alt"></i> ${park.governorate}</span>
+                        <span><i class="fas fa-ruler-combined"></i> ${park.area_km2} km²</span>
+                    </div>
+                    <p class="card-description">${park.description.substring(0, 120)}...</p>
+                    <a href="/parks/${park.id}" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-arrow-right"></i> Découvrir
+                    </a>
+                </div>
+            `;
+            
+            container.appendChild(card);
+        });
+        
+        // Update stats
+        document.getElementById('parksCount').textContent = parks.length;
+        
+    } catch (error) {
+        console.error('Error loading parks:', error);
+    }
+}
+
+// Load featured species
+async function loadFeaturedSpecies() {
+    try {
+        const response = await fetch('/api/species');
+        const species = await response.json();
+        
+        // Get random 4 species
+        const featured = species.sort(() => 0.5 - Math.random()).slice(0, 4);
+        
+        const container = document.getElementById('featuredSpecies');
+        container.innerHTML = '';
+        
+        featured.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'card hover-lift';
+            
+            const imageUrl = s.image_url || 'https://via.placeholder.com/300x200?text=' + encodeURIComponent(s.name);
+            
+            card.innerHTML = `
+                <div class="zoom-container">
+                    <img src="${imageUrl}" alt="${s.name}" style="width: 100%; height: 200px; object-fit: cover;">
+                </div>
+                <div class="card-content">
+                    <span class="badge ${s.type === 'animal' ? 'badge-info' : 'badge-success'}">
+                        <i class="fas fa-${s.type === 'animal' ? 'paw' : 'leaf'}"></i> ${s.type === 'animal' ? 'Animal' : 'Plante'}
+                    </span>
+                    <h4 style="margin-top: 0.5rem;">${s.name}</h4>
+                    <p style="font-style: italic; color: var(--text-secondary); font-size: 0.875rem;">${s.scientific_name}</p>
+                </div>
+            `;
+            
+            container.appendChild(card);
+        });
+        
+        // Update stats
+        document.getElementById('speciesCount').textContent = species.length + '+';
+        
+    } catch (error) {
+        console.error('Error loading species:', error);
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadFeaturedParks();
+    loadFeaturedSpecies();
+});
+</script>
+{% endblock %}
