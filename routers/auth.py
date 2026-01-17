@@ -134,7 +134,8 @@ def register_user(user_in: UserCreate):
             total_visits=0,
             joined_date=datetime.now(timezone.utc).isoformat(),
             is_active=True,
-            role="user"
+            role="user",
+            hashed_password=hashed_password
         )
 
         session.add(user_db)
