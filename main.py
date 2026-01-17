@@ -35,6 +35,9 @@ from slowapi.middleware import SlowAPIASGIMiddleware
 
 from database import init_db, engine
 
+# Import routers
+from routers import parks, species, auth
+
 # Redis caching (optional - will fallback gracefully if not available)
 try:
     import redis
@@ -311,6 +314,11 @@ logging.basicConfig(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 templates = Jinja2Templates(directory="templates")
+
+# Include routers
+app.include_router(parks.router)
+app.include_router(species.router)
+app.include_router(auth.router)
 
 
 @app.middleware("http")
