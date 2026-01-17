@@ -52,6 +52,49 @@ from utils import (
 )
 from weather_service import get_weather_for_location, get_weather_forecast
 
+import httpx
+
+
+# ---------- PUBLIC API MODELS ----------
+
+class UnsplashImage(BaseModel):
+    url: str
+    description: str | None
+    alt_description: str | None
+    photographer: str
+    unsplash_url: str
+
+
+# ---------- PUBLIC API FUNCTIONS ----------
+
+async def get_unsplash_images(query: str, count: int = 10) -> List[dict]:
+    if not settings.UNSPLASH_ACCESS_KEY:
+        return []
+
+    url = f"https://api.unsplash.com/search/photos?query={query}&per_page={count}"
+    headers = {"Authorization": f"Client-ID {settings.UNSPLASH_ACCESS_KEY}"}
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                return [
+                    {
+                        "url": photo["urls"]["regular"],
+                        "description": photo.get("description", ""),
+                        "alt_description": photo.get("alt_description", ""),
+                        "photographer": photo["user"]["name"],
+                        "unsplash_url": photo["links"]["html"]
+                    }
+                    for photo in data["results"]
+                ]
+            else:
+                return []
+    except Exception as e:
+        logger.error(f"Unsplash API error: {e}")
+        return []
+
 
 # ---------- APP & GLOBAL MIDDLEWARE ----------
 
@@ -104,6 +147,7 @@ logging.basicConfig(
 )
 
 # Static files and templates
+app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 templates = Jinja2Templates(directory="templates")
 
@@ -1328,4 +1372,25 @@ def get_directions_to_park(directions: DirectionsRequest):
             "directions_url": directions_url,
             "google_maps_url": f"https://www.google.com/maps?q={park.latitude},{park.longitude}",
         }
- 
+
+
+# ---------- PUBLIC API ENDPOINTS ----------
+
+@app.get("/api/parks/{park_id}/unsplash-images", response_model=List[UnsplashImage], tags=["Public APIs"])
+async def get_park_unsplash_images(park_id: int, count: int = Query(10, ge=1, le=30)):
+    """
+    Get high-quality nature images for a park from Unsplash.
+
+    - park_id: The ID of the park
+    - count: Number of images to retrieve (1-30, default 10)
+    """
+    with Session(engine) as session:
+        park = session.get(ParkDB, park_id)
+        if park is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+
+        # Use park name as search query
+        query = f"{park.name} national park tunisia nature"
+        images = await get_unsplash_images(query, count)
+
+        return [UnsplashImage(**img) for img in images]

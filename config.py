@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     # Weather API
     OPENWEATHER_API_KEY: str | None = None
 
+    # Public APIs
+    UNSPLASH_ACCESS_KEY: str | None = None
+    GOOGLE_PLACES_API_KEY: str | None = None
+    NEWSAPI_API_KEY: str | None = None
+
     class Config:
         env_file = ".env"
         case_sensitive = True
