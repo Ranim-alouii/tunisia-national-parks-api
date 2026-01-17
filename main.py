@@ -345,7 +345,8 @@ async def add_security_headers(request: Request, call_next):
     )
 
     # Remove server information
-    response.headers.pop("Server", None)
+    if "Server" in response.headers:
+        del response.headers["Server"]
 
     return response
 

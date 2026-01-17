@@ -300,6 +300,32 @@ class SightingDB(SQLModel, table=True):
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
+class UserDB(SQLModel, table=True):
+    __tablename__ = "users"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(unique=True, index=True, min_length=3, max_length=50)
+    email: str = Field(unique=True, index=True, max_length=255)
+    full_name: str | None = Field(default=None, max_length=255)
+    avatar_url: str | None = Field(default=None, max_length=1000)
+    bio: str | None = Field(default=None, max_length=500)
+    location: str | None = Field(default=None, max_length=255)
+    favorite_parks: list[int] = Field(default_factory=list, sa_column=Column(JSON))
+    badges_earned: list[int] = Field(default_factory=list, sa_column=Column(JSON))
+    total_visits: int = Field(default=0)
+    joined_date: str = Field(default_factory=lambda: datetime.now().isoformat())
+    is_active: bool = Field(default=True)
+    role: str = Field(default="user", regex="^(user|moderator|admin)$", max_length=20)
+    hashed_password: str = Field(min_length=8)
+
+    # Database constraints
+    __table_args__ = (
+        UniqueConstraint('username', name='unique_username'),
+        UniqueConstraint('email', name='unique_email'),
+        Index('idx_users_active_role', 'is_active', 'role'),
+    )
+
+
 class HealthProfileDB(SQLModel, table=True):
     __tablename__ = "health_profiles"
 

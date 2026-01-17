@@ -68,6 +68,34 @@ def authenticate_user(username: str, password: str) -> UserInDB | None:
         return None
     return user
 
+# ---------- DEPENDENCIES ----------
+
+from fastapi import HTTPException, Depends
+from jose import JWTError, jwt
+from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+    )
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = get_user(username)
+    if user is None or user.disabled:
+        raise credentials_exception
+    return User(username=user.username, full_name=user.full_name, disabled=user.disabled)
+
 # ---------- AUTH ENDPOINTS ----------
 
 @router.post("/register", response_model=UserDB, status_code=201)
