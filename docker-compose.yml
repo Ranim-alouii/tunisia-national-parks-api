@@ -1,87 +1,55 @@
 version: '3.8'
-
 services:
-  # PostgreSQL Database
   db:
-    image: postgres:15-alpine
-    container_name: tunisia_parks_db
+    image: postgis/postgis:15-3.3
     environment:
-      POSTGRES_DB: tunisia_parks_prod
-      POSTGRES_USER: parks_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: parksdb
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - db_data:/var/lib/postgresql/data
+      - ./init_db:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U parks_user"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
+      start_period: 5s
 
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: tunisia_parks_redis
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # Application
-  app:
-    build: .
-    container_name: tunisia_parks_app
+  api:
+    build: ./backend
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://parks_user:${DB_PASSWORD}@db:5432/tunisia_parks_prod
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY}
-      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY}
+      - db
+    env_file:
+      - .env.example
+    volumes:
+      - ./frontend:/app/frontend:ro
     ports:
       - "8000:8000"
-    volumes:
-      - ./static:/app/static
-      - ./logs:/app/logs
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    image: nginx:alpine
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-    restart: unless-stopped
-
-  # Nginx Reverse Proxy
-  nginx:
-    image: nginx:alpine
-    container_name: tunisia_parks_nginx
-    depends_on:
-      - app
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - ./static:/usr/share/nginx/html/static:ro
-    restart: unless-stopped
 
 volumes:
-  postgres_data:
-  redis_data:
-
-networks:
-  default:
-    name: tunisia_parks_network
+  db_data:

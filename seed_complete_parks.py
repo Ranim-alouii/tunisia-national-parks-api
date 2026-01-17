@@ -5,7 +5,7 @@
 
 from sqlmodel import Session, select, delete
 from database import engine, init_db
-from models import ParkDB, SpeciesDB, ParkSpeciesLink
+from models import ParkDB, SpeciesDB, ParkSpeciesLink, TrailDB
 from typing import List, Dict
 
 # Complete list of all 17 Tunisia National Parks
@@ -390,6 +390,233 @@ SPECIES_DATA = [
     },
 ]
 
+# Hiking trails for various parks
+TRAILS_DATA = [
+    # Ichkeul Trails
+    {
+        "park_name": "Parc National d'Ichkeul",
+        "name": "Circuit des Flamants Roses",
+        "description": "Boucle autour du lac d'Ichkeul avec observation des flamants roses et autres oiseaux migrateurs. Sentier plat le long des rives.",
+        "difficulty": "facile",
+        "length_km": 8.5,
+        "duration_hours": 3,
+        "elevation_gain": 50,
+        "trail_type": "boucle",
+        "highlights": ["Observation flamants", "Zone humide UNESCO", "Faune migratoire"]
+    },
+    {
+        "park_name": "Parc National d'Ichkeul",
+        "name": "Chemin des Marécages",
+        "description": "Sentier sur pilotis traversant les marécages. Accès aux zones les plus humides du parc avec observation rapprochée de la biodiversité.",
+        "difficulty": "facile",
+        "length_km": 4.2,
+        "duration_hours": 2,
+        "elevation_gain": 20,
+        "trail_type": "aller-retour",
+        "highlights": ["Marécages", "Sentier sur pilotis", "Biodiversité aquatique"]
+    },
+
+    # Boukornine Trails
+    {
+        "park_name": "Parc National de Boukornine",
+        "name": "Sommet du Djebel Boukornine",
+        "description": "Ascension du point culminant offrant des vues panoramiques sur Tunis et la région. Sentier escarpé avec passages rocheux.",
+        "difficulty": "difficile",
+        "length_km": 12.0,
+        "duration_hours": 5,
+        "elevation_gain": 420,
+        "trail_type": "aller-retour",
+        "highlights": ["Vue panoramique", "Sommet", "Flore méditerranéenne"]
+    },
+    {
+        "park_name": "Parc National de Boukornine",
+        "name": "Boucle des Thuyas",
+        "description": "Circuit dans la forêt de thuyas de Berbérie. Découverte des conifères endémiques et de la flore méditerranéenne.",
+        "difficulty": "modéré",
+        "length_km": 6.8,
+        "duration_hours": 2.5,
+        "elevation_gain": 180,
+        "trail_type": "boucle",
+        "highlights": ["Thuyas de Berbérie", "Forêt méditerranéenne", "Flore endémique"]
+    },
+
+    # Zaghouan Trails
+    {
+        "park_name": "Parc National de Zaghouan",
+        "name": "Sources Romaines",
+        "description": "Sentier historique menant aux sources romaines qui alimentaient Carthage. Paysages de genévriers et pins d'Alep.",
+        "difficulty": "modéré",
+        "length_km": 7.5,
+        "duration_hours": 3,
+        "elevation_gain": 220,
+        "trail_type": "aller-retour",
+        "highlights": ["Sources romaines", "Histoire antique", "Genévriers anciens"]
+    },
+
+    # El Feija Trails
+    {
+        "park_name": "Parc National d'El Feija",
+        "name": "Forêt des Cerfs",
+        "description": "Exploration de la forêt de chênes zéens avec possibilité d'observer les cerfs de Barbarie. Sentier ombragé en sous-bois.",
+        "difficulty": "facile",
+        "length_km": 5.2,
+        "duration_hours": 2,
+        "elevation_gain": 80,
+        "trail_type": "boucle",
+        "highlights": ["Cerfs de Barbarie", "Chênes zéens", "Forêt humide"]
+    },
+    {
+        "park_name": "Parc National d'El Feija",
+        "name": "Rivières et Cascades",
+        "description": "Sentier le long des cours d'eau et cascades de la région. Végétation luxuriante et points de vue sur les gorges.",
+        "difficulty": "modéré",
+        "length_km": 9.0,
+        "duration_hours": 3.5,
+        "elevation_gain": 150,
+        "trail_type": "linéaire",
+        "highlights": ["Cascades", "Gorges", "Cours d'eau"]
+    },
+
+    # Chaambi Trails
+    {
+        "park_name": "Parc National de Chaambi",
+        "name": "Ascension du Djebel Chaambi",
+        "description": "La grande ascension vers le plus haut sommet de Tunisie (1544m). Sentier alpin avec vues spectaculaires. Expérience exigeante.",
+        "difficulty": "difficile",
+        "length_km": 18.0,
+        "duration_hours": 8,
+        "elevation_gain": 850,
+        "trail_type": "aller-retour",
+        "highlights": ["Plus haut sommet", "Vue panoramique", "Alpinisme"]
+    },
+    {
+        "park_name": "Parc National de Chaambi",
+        "name": "Pins d'Alep Trail",
+        "description": "Balade dans les dernières forêts de pins d'Alep de haute altitude. Flore et faune d'altitude exceptionnelle.",
+        "difficulty": "modéré",
+        "length_km": 8.5,
+        "duration_hours": 3.5,
+        "elevation_gain": 280,
+        "trail_type": "boucle",
+        "highlights": ["Pins d'Alep", "Haute altitude", "Faune alpine"]
+    },
+
+    # Bouhedma Trails
+    {
+        "park_name": "Parc National de Bouhedma",
+        "name": "Désert des Oryx",
+        "description": "Traversée du désert avec observation des oryx et gazelles dans leur habitat naturel. Paysages sahariens authentiques.",
+        "difficulty": "modéré",
+        "length_km": 15.0,
+        "duration_hours": 6,
+        "elevation_gain": 120,
+        "trail_type": "boucle",
+        "highlights": ["Oryx algazelle", "Gazelles dorcas", "Désert authentique"]
+    },
+    {
+        "park_name": "Parc National de Bouhedma",
+        "name": "Oasis des Acacias",
+        "description": "Circuit autour des acacias raddiana et points d'eau. Découverte de la flore désertique et faune associée.",
+        "difficulty": "facile",
+        "length_km": 6.0,
+        "duration_hours": 2.5,
+        "elevation_gain": 40,
+        "trail_type": "boucle",
+        "highlights": ["Acacias", "Oasis", "Flore désertique"]
+    },
+
+    # Jebil Trails
+    {
+        "park_name": "Parc National de Jebil",
+        "name": "Dunes Géantes",
+        "description": "Randonnée dans les plus grandes dunes du Grand Erg Oriental. Expérience saharienne authentique avec navigation à la boussole.",
+        "difficulty": "difficile",
+        "length_km": 25.0,
+        "duration_hours": 10,
+        "elevation_gain": 200,
+        "trail_type": "boucle",
+        "highlights": ["Dunes géantes", "Navigation désert", "Sahara authentique"]
+    },
+
+    # Oued Zeen Trails
+    {
+        "park_name": "Parc National de Oued Zeen",
+        "name": "Forêt Pluviale",
+        "description": "Immersion dans la forêt de chênes zéens, la plus humide de Tunisie. Observation de la faune forestière et cascades.",
+        "difficulty": "modéré",
+        "length_km": 10.5,
+        "duration_hours": 4,
+        "elevation_gain": 300,
+        "trail_type": "aller-retour",
+        "highlights": ["Chênes zéens", "Forêt pluviale", "Cascades"]
+    },
+
+    # Orbata Trails
+    {
+        "park_name": "Parc National de l'Orbata",
+        "name": "Genévriers Rouges",
+        "description": "Ascension vers les genévriers rouges de haute altitude. Paysages montagneux et flore exceptionnelle.",
+        "difficulty": "difficile",
+        "length_km": 14.0,
+        "duration_hours": 6,
+        "elevation_gain": 600,
+        "trail_type": "aller-retour",
+        "highlights": ["Genévriers rouges", "Haute montagne", "Flore alpine"]
+    },
+
+    # Jebel Serj Trails
+    {
+        "park_name": "Parc National de Jebel Serj",
+        "name": "Liège Ancien",
+        "description": "Exploration des forêts de chênes-lièges centenaires. Apprentissage de l'exploitation traditionnelle du liège.",
+        "difficulty": "facile",
+        "length_km": 4.5,
+        "duration_hours": 2,
+        "elevation_gain": 100,
+        "trail_type": "boucle",
+        "highlights": ["Chênes-lièges", "Exploitation liège", "Arbres centenaires"]
+    },
+
+    # Jebel Mghilla Trails
+    {
+        "park_name": "Parc National de Jebel Mghilla",
+        "name": "Observatoire Faunique",
+        "description": "Sentier d'observation de la faune diversifiée du parc. Points de vue aménagés pour l'observation des rapaces et mammifères.",
+        "difficulty": "modéré",
+        "length_km": 7.8,
+        "duration_hours": 3,
+        "elevation_gain": 250,
+        "trail_type": "boucle",
+        "highlights": ["Observation faune", "Rapaces", "Mammifères"]
+    },
+
+    # Jebel Zaghdoud Trails
+    {
+        "park_name": "Parc National de Jebel Zaghdoud",
+        "name": "Caroubiers et Pins",
+        "description": "Balade dans les forêts de caroubiers et pins d'Alep. Végétation variée selon les altitudes avec points de vue sur la région.",
+        "difficulty": "modéré",
+        "length_km": 6.2,
+        "duration_hours": 2.5,
+        "elevation_gain": 180,
+        "trail_type": "boucle",
+        "highlights": ["Caroubiers", "Pins d'Alep", "Végétation altitude"]
+    },
+
+    # Zembra Trails (limited access)
+    {
+        "park_name": "Parc National de Zembra et Zembretta",
+        "name": "Côtes des Puffins",
+        "description": "Sentier côtier avec observation des puffins cendrés. Accessible uniquement avec guide autorisé. Paysages marins exceptionnels.",
+        "difficulty": "modéré",
+        "length_km": 3.5,
+        "duration_hours": 2,
+        "elevation_gain": 80,
+        "trail_type": "aller-retour",
+        "highlights": ["Puffins cendrés", "Côtes rocheuses", "Île inhabitée"]
+    }
+]
+
 
 def seed_complete_database():
     """Seed database with complete park and species information"""
@@ -454,7 +681,32 @@ def seed_complete_database():
         
         session.commit()
         print(f"\n✅ Added {species_count} species with complete data\n")
-        
+
+        # Add trails
+        print("🥾 Adding Hiking Trails...")
+        trails_count = 0
+        for trail_data in TRAILS_DATA:
+            park_name = trail_data.pop("park_name")
+            park_obj = None
+            for full_park_name, park in park_objects.items():
+                if park_name.lower() in full_park_name.lower():
+                    park_obj = park
+                    break
+
+            if park_obj:
+                trail_data["park_id"] = park_obj.id
+                # Convert highlights list to JSON string
+                if "highlights" in trail_data and isinstance(trail_data["highlights"], list):
+                    import json
+                    trail_data["highlights"] = json.dumps(trail_data["highlights"])
+                trail = TrailDB(**trail_data)
+                session.add(trail)
+                trails_count += 1
+                print(f"  🥾 {trail.name} ({trail.difficulty}) - {trail.length_km} km")
+
+        session.commit()
+        print(f"\n✅ Added {trails_count} hiking trails\n")
+
         # Summary statistics
         print("📊 DATABASE SUMMARY:")
         print(f"   • Total Parks: 17")

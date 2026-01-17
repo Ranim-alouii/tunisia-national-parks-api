@@ -176,7 +176,7 @@ async def get_nearby_places(lat: float, lng: float, place_type: str = "restauran
     """
     Get nearby places using Google Places API.
     """
-    if not settings.GOOGLE_PLACES_API_KEY:
+    if not settings.GOOGLE_PLACES_API_KEY or settings.GOOGLE_PLACES_API_KEY == "demo_key_disabled":
         return []
 
     url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
@@ -3105,9 +3105,9 @@ def list_reviews_for_park(park_id: int):
                 rating=r.rating,
                 title=r.title,
                 comment=r.comment,
-                visit_date=r.visit_date.isoformat() if r.visit_date else None,
+                visit_date=r.visit_date if isinstance(r.visit_date, str) else (r.visit_date.isoformat() if r.visit_date else None),
                 helpful_count=r.helpful_count,
-                created_at=r.created_at.isoformat(),
+                created_at=r.created_at.isoformat() if hasattr(r.created_at, 'isoformat') else str(r.created_at),
             )
             for r in reviews_db
         ]

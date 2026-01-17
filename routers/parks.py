@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session
 
 from models import ParkDB
-from database import engine
+from database import get_engine
 from utils import get_file_url
 
 # Create router
@@ -54,7 +54,7 @@ def list_parks(
     max_area: float | None = None,
 ):
     """List all parks with filtering and pagination."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         query = session.query(ParkDB)
 
         # Apply filters
@@ -85,7 +85,7 @@ def list_parks(
 @router.get("/{park_id}", response_model=Park)
 def get_park(park_id: int):
     """Get a specific park by ID."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         park = session.get(ParkDB, park_id)
         if park is None:
             raise HTTPException(status_code=404, detail="Park not found")
@@ -104,7 +104,7 @@ def get_park(park_id: int):
 @router.post("/", response_model=Park, status_code=201)
 def create_park(park_in: ParkCreate):
     """Create a new park."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         park_db = ParkDB(
             name=park_in.name,
             governorate=park_in.governorate,
@@ -131,7 +131,7 @@ def create_park(park_in: ParkCreate):
 @router.put("/{park_id}", response_model=Park)
 def update_park(park_id: int, park_in: ParkUpdate):
     """Update an existing park."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
             raise HTTPException(status_code=404, detail="Park not found")
@@ -158,7 +158,7 @@ def update_park(park_id: int, park_in: ParkUpdate):
 @router.delete("/{park_id}", status_code=204)
 def delete_park(park_id: int):
     """Delete a park."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         park_db = session.get(ParkDB, park_id)
         if park_db is None:
             raise HTTPException(status_code=404, detail="Park not found")

@@ -379,18 +379,20 @@ async function loadSpecies() {
         }
 
         container.innerHTML = species.map(s => `
-            <div class="card hover-lift">
-                <img src="${s.image_url || 'https://via.placeholder.com/200'}"
-                     alt="${s.name}"
-                     style="width: 100%; height: 150px; object-fit: cover;">
-                <div class="card-content">
-                    <span class="badge ${s.type === 'animal' ? 'badge-info' : 'badge-success'}">
-                        <i class="fas fa-${s.type === 'animal' ? 'paw' : 'leaf'}"></i>
-                    </span>
-                    <h5 style="margin-top: 0.5rem; margin-bottom: 0.25rem;">${s.name}</h5>
-                    <p style="font-size: 0.75rem; font-style: italic; color: var(--text-secondary);">${s.scientific_name}</p>
+            <a href="/species/${s.species_id}" class="species-link">
+                <div class="card hover-lift">
+                    <img src="${s.image_url || 'https://via.placeholder.com/200'}"
+                         alt="${s.name}"
+                         style="width: 100%; height: 150px; object-fit: cover;">
+                    <div class="card-content">
+                        <span class="badge ${s.type === 'animal' ? 'badge-info' : 'badge-success'}">
+                            <i class="fas fa-${s.type === 'animal' ? 'paw' : 'leaf'}"></i>
+                        </span>
+                        <h5 style="margin-top: 0.5rem; margin-bottom: 0.25rem;">${s.name}</h5>
+                        <p style="font-size: 0.75rem; font-style: italic; color: var(--text-secondary);">${s.scientific_name}</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         `).join('');
 
     } catch (error) {
@@ -756,6 +758,17 @@ document.addEventListener('DOMContentLoaded', () => {
     padding: 1.5rem;
     border-radius: var(--radius-md);
     border-left: 4px solid var(--primary);
+}
+
+.species-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.species-link:hover {
+    text-decoration: none;
+    color: inherit;
 }
 </style>
 

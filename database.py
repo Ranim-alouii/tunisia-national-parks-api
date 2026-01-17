@@ -6,6 +6,21 @@ from config import settings
 engine = create_engine(settings.DATABASE_URL, echo=True)
 
 
+def get_engine():
+    """Get the appropriate engine (test or production)."""
+    # Check if we're in testing mode
+    try:
+        from fastapi import Request
+        # This is a bit of a hack, but we need to access the app state
+        # In tests, the app will have test_engine set
+        import main
+        if hasattr(main.app.state, 'test_engine'):
+            return main.app.state.test_engine
+    except:
+        pass
+    return engine
+
+
 def init_db() -> None:
     """
     Initialize database tables.
@@ -20,12 +35,16 @@ def init_db() -> None:
         ReviewDB,
         BadgeDB,
         SightingDB,
+        UserDB,
+        UserBadgeDB,
+        UserStatsDB,
+        HealthProfileDB,
     )
 
-    SQLModel.metadata.create_all(engine)
+    SQLModel.metadata.create_all(get_engine())
 
 
 def get_db():
     """FastAPI dependency that provides a database session."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         yield session
