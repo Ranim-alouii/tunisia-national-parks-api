@@ -212,11 +212,11 @@ function applyFilters() {
     const searchTerm = currentSearch.toLowerCase();
 
     filteredSpecies = allSpecies.filter(species => {
-        // Search filter
+        // Search filter with null-check
         const matchesSearch = !searchTerm ||
-            species.name.toLowerCase().includes(searchTerm) ||
-            species.scientific_name.toLowerCase().includes(searchTerm) ||
-            species.description.toLowerCase().includes(searchTerm);
+            (species.name && typeof species.name === 'string' && species.name.toLowerCase().includes(searchTerm)) ||
+            (species.scientific_name && typeof species.scientific_name === 'string' && species.scientific_name.toLowerCase().includes(searchTerm)) ||
+            (species.description && typeof species.description === 'string' && species.description.toLowerCase().includes(searchTerm));
 
         // Type filter
         let matchesType = true;
