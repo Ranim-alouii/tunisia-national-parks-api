@@ -166,8 +166,8 @@ def get_park_trails(park_id: int):
         from typing import List
         from pydantic import BaseModel
 
-        class Trail(BaseModel):
-            trail_id: int
+        class TrailResponse(BaseModel):
+            id: int
             park_id: int
             name: str
             description: str
@@ -180,19 +180,19 @@ def get_park_trails(park_id: int):
             highlights: List[str] | None = None
 
         return [
-            {
-                "trail_id": t.trail_id,
-                "park_id": t.park_id,
-                "name": t.name,
-                "description": t.description,
-                "difficulty": t.difficulty,
-                "length_km": t.length_km,
-                "duration_hours": t.duration_hours,
-                "elevation_gain": t.elevation_gain,
-                "trail_type": t.trail_type,
-                "surface": t.surface,
-                "highlights": t.highlights.split(",") if t.highlights else None,
-            }
+            TrailResponse(
+                id=t.trail_id,
+                park_id=t.park_id,
+                name=t.name,
+                description=t.description,
+                difficulty=t.difficulty,
+                length_km=t.length_km,
+                duration_hours=t.duration_hours,
+                elevation_gain=t.elevation_gain,
+                trail_type=t.trail_type,
+                surface=t.surface,
+                highlights=t.highlights.split(",") if t.highlights else None,
+            )
             for t in trails_db
         ]
 
