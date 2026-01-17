@@ -57,13 +57,16 @@ tunisia-parks-api/
 git clone https://github.com/Ranim-alouii/tunisia-national-parks-api.git
 cd tunisia-national-parks-api
 
-# Start all services
+# For development
 docker-compose up --build
 
+# For production
+./deploy.sh production
+
 # Access the application
-# 🌐 Frontend: http://localhost:8000
-# 📚 API Docs: http://localhost:8000/docs
-# 🔌 API Base: http://localhost:8000/api
+# 🌐 Frontend: http://localhost:8002 (dev) / https://yourdomain.com (prod)
+# 📚 API Docs: http://localhost:8002/docs (dev) / https://yourdomain.com/docs (prod)
+# 🔌 API Base: http://localhost:8002/api (dev) / https://yourdomain.com/api (prod)
 ```
 
 ### Option 2: Local Development
@@ -94,6 +97,22 @@ python main.py
 # 🌐 Frontend: http://localhost:8002
 # 📚 API Docs: http://localhost:8002/docs
 # 🔌 API Base: http://localhost:8002/api
+```
+
+### Option 3: Production Deployment
+
+```bash
+# Automated deployment
+./deploy.sh production
+
+# Manual deployment
+docker-compose -f docker-compose.prod.yml up --build -d
+
+# Backup data
+./backup.sh
+
+# Monitor services
+./monitor.sh
 ```
 
 ## ⚙️ Environment Configuration
@@ -242,57 +261,64 @@ curl "http://localhost:8002/api/parks/1/unsplash-images?count=10"
 
 ## 🐳 Docker Deployment
 
+The project includes complete Docker infrastructure for both development and production environments.
+
 ### Development Setup
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  api:
-    build: .
-    ports:
-      - "8001:8000"
-    environment:
-      - DATABASE_URL=sqlite:///./tunisia_parks.db
-      - ENVIRONMENT=development
-    volumes:
-      - ./uploads:/app/uploads
-      - ./tunisia_parks.db:/app/tunisia_parks.db
+```bash
+# Start development environment
+docker-compose up --build
+
+# Includes: App, Redis, Nginx (optional)
+# Access at: http://localhost:8002
 ```
 
 ### Production Setup
-```yaml
-# docker-compose.prod.yml
-version: '3.8'
-services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      - DATABASE_URL=postgresql://user:pass@db/tunisia_parks
-      - ENVIRONMENT=production
-    depends_on:
-      - db
-    volumes:
-      - uploads:/app/uploads
+```bash
+# Automated deployment
+./deploy.sh production
 
-  db:
-    image: postgis/postgis:15-3.3
-    environment:
-      - POSTGRES_DB=tunisia_parks
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+# Manual deployment
+docker-compose -f docker-compose.prod.yml up --build -d
 
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - uploads:/var/www/uploads
+# Includes: App, Redis, Nginx, SSL certificates
+# Access at: https://yourdomain.com
+```
+
+### Deployment Features
+
+- **🔒 SSL/TLS**: Automatic HTTPS with Let's Encrypt
+- **🔄 Load Balancing**: Nginx reverse proxy with rate limiting
+- **💾 Persistent Storage**: Database and uploads volume management
+- **📊 Monitoring**: Health checks and resource monitoring
+- **🔄 Auto-restart**: Container recovery and service orchestration
+- **📦 Backup**: Automated database and file backup scripts
+
+### Environment Files
+
+- **`.env`**: Development configuration
+- **`.env.production`**: Production configuration (secure keys)
+- **`docker-compose.yml`**: Development stack
+- **`docker-compose.prod.yml`**: Production stack with SSL
+- **`docker-compose.override.yml`**: Development overrides
+
+### Deployment Scripts
+
+- **`deploy.sh`**: Automated deployment with health checks
+- **`backup.sh`**: Database and uploads backup
+- **`monitor.sh`**: Real-time service monitoring
+
+### Infrastructure Overview
+
+```
+Production Stack:
+├── 🌐 Nginx (SSL termination, rate limiting)
+├── 🐳 App Container (FastAPI application)
+├── 🗄️ Redis (caching, sessions)
+└── 🔒 SSL Certificates (Let's Encrypt)
+
+Development Stack:
+├── 🐳 App Container
+└── 🗄️ Redis (optional)
 ```
 
 ## 🔧 Development Features
