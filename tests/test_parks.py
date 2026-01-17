@@ -5,6 +5,7 @@ Unit tests for parks API endpoints
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
+from sqlalchemy import text
 
 from models import ParkDB
 
@@ -12,8 +13,12 @@ from models import ParkDB
 class TestParksAPI:
     """Test suite for parks API endpoints"""
 
-    def test_list_parks_empty(self, client: TestClient):
+    def test_list_parks_empty(self, client: TestClient, db_session):
         """Test listing parks when database is empty"""
+        # Ensure database is clean
+        db_session.execute(text("DELETE FROM parks"))
+        db_session.commit()
+
         response = client.get("/api/parks")
         assert response.status_code == 200
         data = response.json()
@@ -128,6 +133,7 @@ class TestParksAPI:
                 "latitude": 36.8065,
                 "longitude": 10.1815,
                 "area_km2": 50.0,
+                "google_maps_url": "https://maps.google.com/?q=36.8065,10.1815",
             },
             {
                 "name": "Park B",
@@ -136,6 +142,7 @@ class TestParksAPI:
                 "latitude": 37.8065,
                 "longitude": 11.1815,
                 "area_km2": 100.0,
+                "google_maps_url": "https://maps.google.com/?q=37.8065,11.1815",
             },
         ]
 

@@ -7,6 +7,7 @@ import sys
 import os
 from fastapi.testclient import TestClient
 from sqlmodel import Session, create_engine, SQLModel
+from sqlalchemy import text
 from sqlalchemy.pool import StaticPool
 
 # Add the parent directory to the path to import main module
@@ -53,6 +54,26 @@ def db_session(test_db):
         yield session
 
 
+@pytest.fixture(autouse=True)
+def cleanup_database(test_db):
+    """Clean up database between tests"""
+    # This runs before each test
+    with Session(test_db) as session:
+        # Delete all data from tables in reverse dependency order
+        session.execute(text("DELETE FROM sightings"))
+        session.execute(text("DELETE FROM reviews"))
+        session.execute(text("DELETE FROM trails"))
+        session.execute(text("DELETE FROM park_species"))
+        session.execute(text("DELETE FROM badges"))
+        session.execute(text("DELETE FROM user_badges"))
+        session.execute(text("DELETE FROM user_stats"))
+        session.execute(text("DELETE FROM health_profiles"))
+        session.execute(text("DELETE FROM users"))
+        session.execute(text("DELETE FROM species"))
+        session.execute(text("DELETE FROM parks"))
+        session.commit()
+
+
 @pytest.fixture
 def sample_park_data():
     """Sample park data for testing"""
@@ -63,6 +84,7 @@ def sample_park_data():
         "latitude": 36.8065,
         "longitude": 10.1815,
         "area_km2": 100.0,
+        "google_maps_url": "https://maps.google.com/?q=36.8065,10.1815",
     }
 
 
