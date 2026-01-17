@@ -1,26 +1,34 @@
 from typing import List, Literal
+from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, HTTPException, Request, Depends, status
-from pydantic import BaseModel, Field
-from sqlmodel import Session, select
-
-from database import init_db, engine
-from models import ParkDB, SpeciesDB, ParkSpeciesLink
-
-
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from starlette import status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel, Field
+from sqlmodel import Session, select
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 import logging
 import time
-from fastapi import Request
 
+from database import init_db, engine
+from models import ParkDB, SpeciesDB, ParkSpeciesLink
+
+from fastapi.middleware.cors import CORSMiddleware
+from config import settings
 
 app = FastAPI(title="Tunisia National Parks API")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.get_origins_list(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 logger = logging.getLogger("tunisia_parks")
 logging.basicConfig(
@@ -70,8 +78,11 @@ SECRET_KEY = "change-this-secret-key-to-something-random-and-long"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
 
+# ---------- SECURITY CONFIG (SINGLE ADMIN) ----------
+
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
 
 
 class Token(BaseModel):
@@ -102,14 +113,12 @@ def get_password_hash(password: str) -> str:
 
 
 # Single in-memory admin user
-fake_admin_username = "admin"
-fake_admin_password = "admin123"  # plain password you will use to log in
 fake_admin_user_db: dict[str, UserInDB] = {
-    fake_admin_username: UserInDB(
-        username=fake_admin_username,
-        full_name="Park Admin",
+    settings.ADMIN_USERNAME: UserInDB(
+        username=settings.ADMIN_USERNAME,
+        full_name=settings.ADMIN_FULL_NAME,
         disabled=False,
-        hashed_password=get_password_hash(fake_admin_password),
+        hashed_password=get_password_hash(settings.ADMIN_PASSWORD),
     )
 }
 
@@ -131,10 +140,13 @@ def authenticate_user(username: str, password: str) -> UserInDB | None:
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
@@ -143,7 +155,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         detail="Could not validate credentials",
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         username: str | None = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -155,6 +167,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     if user is None or user.disabled:
         raise credentials_exception
     return user
+
 
 
 @app.on_event("startup")
