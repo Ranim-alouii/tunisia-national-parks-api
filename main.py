@@ -26,6 +26,12 @@ from utils import (
     SPECIES_DIR,
 )
 
+from weather_service import get_weather_for_location, get_weather_forecast
+
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+
+
 app = FastAPI(
     title="Tunisia National Parks API",
     description="""
@@ -36,11 +42,16 @@ app = FastAPI(
     * **Parks Management**: CRUD operations for national parks
     * **Species Management**: Manage endangered species and their conservation
     * **Image Upload**: Upload and manage images for parks and species
+    * **Weather**: Real-time weather data and forecasts for parks
+    * **Maps & Navigation**: Google Maps integration with directions
     * **Route Information**: Get travel directions and safety tips
     * **Emergency**: Report emergencies with location data
     """,
     version="1.0.0",
 )
+
+templates = Jinja2Templates(directory="templates")
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -481,6 +492,44 @@ class SpeciesUpdate(BaseModel):
     park_ids: List[int] | None = None
 
 
+# ---------- WEATHER & MAP MODELS ----------
+
+class WeatherResponse(BaseModel):
+    temperature: int
+    feels_like: int
+    temp_min: int
+    temp_max: int
+    humidity: int
+    pressure: int
+    description: str
+    icon: str
+    icon_url: str
+    wind_speed: float
+    wind_direction: int
+    clouds: int
+    visibility: float
+    sunrise: int
+    sunset: int
+    timezone: int
+    city_name: str
+
+
+class MapData(BaseModel):
+    park_id: int
+    park_name: str
+    latitude: float
+    longitude: float
+    governorate: str
+    google_maps_url: str
+    directions_url: str
+
+
+class DirectionsRequest(BaseModel):
+    origin_lat: float
+    origin_lng: float
+    destination_park_id: int
+
+
 # ---------- SPECIES ENDPOINTS ----------
 
 @app.get("/api/species", response_model=List[Species], tags=["Species"])
@@ -751,6 +800,192 @@ def delete_species_image(
         session.commit()
         
         return None
+
+
+# ---------- WEATHER ENDPOINTS ----------
+
+@app.get("/api/weather/current", tags=["Weather"])
+async def get_current_weather(
+    latitude: float,
+    longitude: float,
+):
+    """
+    Get current weather for any location by coordinates.
+    
+    Example: Get weather for Tunis
+    - latitude: 36.8065
+    - longitude: 10.1815
+    """
+    weather_data = await get_weather_for_location(latitude, longitude)
+    
+    if "error" in weather_data:
+        raise HTTPException(status_code=503, detail=weather_data)
+    
+    return weather_data
+
+
+@app.get("/api/parks/{park_id}/weather", tags=["Weather"])
+async def get_park_weather(park_id: int):
+    """
+    Get current weather for a specific park.
+    
+    Returns real-time weather data including temperature, conditions, and forecast.
+    """
+    with Session(engine) as session:
+        park = session.get(ParkDB, park_id)
+        if park is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+        
+        weather_data = await get_weather_for_location(park.latitude, park.longitude)
+        
+        if "error" in weather_data:
+            raise HTTPException(status_code=503, detail=weather_data)
+        
+        return {
+            "park_id": park.id,
+            "park_name": park.name,
+            "weather": weather_data
+        }
+
+
+@app.get("/api/parks/{park_id}/forecast", tags=["Weather"])
+async def get_park_forecast(park_id: int, days: int = 5):
+    """
+    Get weather forecast for a specific park (up to 5 days).
+    """
+    if days < 1 or days > 5:
+        raise HTTPException(status_code=400, detail="Days must be between 1 and 5")
+    
+    with Session(engine) as session:
+        park = session.get(ParkDB, park_id)
+        if park is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+        
+        forecast_data = await get_weather_forecast(park.latitude, park.longitude, days)
+        
+        if "error" in forecast_data:
+            raise HTTPException(status_code=503, detail=forecast_data)
+        
+        return {
+            "park_id": park.id,
+            "park_name": park.name,
+            "forecast": forecast_data
+        }
+
+
+# ---------- MAP & DIRECTIONS ENDPOINTS ----------
+
+@app.get("/api/parks/{park_id}/map", response_model=MapData, tags=["Maps & Navigation"])
+def get_park_map_data(park_id: int):
+    """
+    Get map data for a specific park.
+    
+    Returns coordinates and links to Google Maps for viewing and directions.
+    """
+    with Session(engine) as session:
+        park = session.get(ParkDB, park_id)
+        if park is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+        
+        # Generate Google Maps URLs
+        google_maps_url = f"https://www.google.com/maps?q={park.latitude},{park.longitude}"
+        directions_url = f"https://www.google.com/maps/dir/?api=1&destination={park.latitude},{park.longitude}"
+        
+        return MapData(
+            park_id=park.id,
+            park_name=park.name,
+            latitude=park.latitude,
+            longitude=park.longitude,
+            governorate=park.governorate,
+            google_maps_url=google_maps_url,
+            directions_url=directions_url,
+        )
+
+
+@app.get("/api/maps/all-parks", tags=["Maps & Navigation"])
+def get_all_parks_map_data():
+    """
+    Get map data for all parks.
+    
+    Useful for displaying all parks on a single map.
+    """
+    with Session(engine) as session:
+        parks = session.exec(select(ParkDB)).all()
+        
+        parks_data = []
+        for park in parks:
+            google_maps_url = f"https://www.google.com/maps?q={park.latitude},{park.longitude}"
+            directions_url = f"https://www.google.com/maps/dir/?api=1&destination={park.latitude},{park.longitude}"
+            
+            parks_data.append({
+                "park_id": park.id,
+                "park_name": park.name,
+                "latitude": park.latitude,
+                "longitude": park.longitude,
+                "governorate": park.governorate,
+                "google_maps_url": google_maps_url,
+                "directions_url": directions_url,
+                "description": park.description[:100] + "..." if len(park.description) > 100 else park.description,
+            })
+        
+        return {
+            "total_parks": len(parks_data),
+            "parks": parks_data
+        }
+
+
+@app.post("/api/maps/directions", tags=["Maps & Navigation"])
+def get_directions_to_park(directions: DirectionsRequest):
+    """
+    Get directions from a specific location to a park.
+    
+    Provide your current location coordinates and the park ID.
+    Returns a Google Maps directions URL.
+    """
+    with Session(engine) as session:
+        park = session.get(ParkDB, directions.destination_park_id)
+        if park is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+        
+        # Generate directions URL with origin and destination
+        directions_url = (
+            f"https://www.google.com/maps/dir/?api=1"
+            f"&origin={directions.origin_lat},{directions.origin_lng}"
+            f"&destination={park.latitude},{park.longitude}"
+            f"&travelmode=driving"
+        )
+        
+        return {
+            "park_id": park.id,
+            "park_name": park.name,
+            "origin": {
+                "latitude": directions.origin_lat,
+                "longitude": directions.origin_lng
+            },
+            "destination": {
+                "latitude": park.latitude,
+                "longitude": park.longitude
+            },
+            "directions_url": directions_url,
+            "google_maps_url": f"https://www.google.com/maps?q={park.latitude},{park.longitude}"
+        }
+
+
+@app.get("/map", response_class=HTMLResponse, tags=["Maps & Navigation"])
+async def view_interactive_map(request: Request):
+    """
+    View an interactive map with all national parks.
+    
+    Features:
+    - 🗺️ Interactive map with all parks marked
+    - 📍 Click markers to see park details
+    - 🌤️ Real-time weather for each park
+    - 🧭 Get directions from your current location
+    - 📱 Mobile-friendly and responsive
+    
+    This uses OpenStreetMap (free, no API key needed).
+    """
+    return templates.TemplateResponse("map.html", {"request": request})
 
 
 # ---------- ROUTE & EMERGENCY ----------
