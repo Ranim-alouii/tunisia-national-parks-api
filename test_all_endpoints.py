@@ -10,7 +10,7 @@ import time
 from typing import Dict, List, Tuple
 import sys
 
-BASE_URL = "http://localhost:8002"
+BASE_URL = "http://localhost:8000"
 TIMEOUT = 10
 
 class EndpointTester:

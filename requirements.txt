@@ -16,6 +16,7 @@ alembic
 aiofiles
 boto3
 cloudinary
+prometheus_fastapi_instrumentator
 
 # Testing dependencies
 pytest

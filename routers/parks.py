@@ -45,6 +45,7 @@ class ParkUpdate(BaseModel):
 
 # ---------- PARK ENDPOINTS ----------
 
+@router.get("", response_model=List[Park])
 @router.get("/", response_model=List[Park])
 def list_parks(
     skip: int = 0,
