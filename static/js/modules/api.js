@@ -4,7 +4,7 @@
 
 class ParksAPI {
     constructor() {
-        this.baseURL = window.location.origin;
+        this.baseURL = '';
     }
 
     async fetchParks(limit = 10, filters = {}) {
