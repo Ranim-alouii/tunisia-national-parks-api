@@ -69,6 +69,8 @@ from weather_service import get_weather_for_location, get_weather_forecast
 
 import httpx
 
+# Prometheus monitoring
+from prometheus_fastapi_instrumentator import Instrumentator, metrics
 
 # ---------- PUBLIC API MODELS ----------
 
@@ -1415,6 +1417,9 @@ class MediaService:
 
 @app.on_event("startup")
 def on_startup():
+    # Initialize Prometheus monitoring
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False, should_gzip=True)
+
     init_db()
     # Ensure upload directories exist
     for folder in ["parks", "species", "users", "documents"]:
