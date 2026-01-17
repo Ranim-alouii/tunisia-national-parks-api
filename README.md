@@ -6,7 +6,7 @@ A comprehensive RESTful API for Tunisia's 17 national parks, built with **FastAP
 
 ### 🏞️ Core Functionality
 - **Complete Park Database**: All 17 Tunisia national parks with detailed information
-- **Biodiversity Management**: 100+ species (mammals, birds, plants) with conservation data
+- **Biodiversity Management**: 53+ species (27 animals, 26 plants) with conservation data, safety guidelines, and medicinal uses
 - **Image Upload**: Park and species photos with automatic optimization
 
 ### 🥾 Enhanced Features
@@ -180,9 +180,11 @@ ADMIN_PASSWORD=your-secure-password
 
 ## 🧪 Testing
 
-Run the seeding script to populate test data:
+Run the seeding scripts to populate comprehensive test data:
 ```bash
 python seed_complete_parks.py
+python seed_more_species.py
+python add_enhanced_data.py
 ```
 
 ## 📁 Project Structure

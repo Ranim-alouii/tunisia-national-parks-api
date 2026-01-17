@@ -392,13 +392,13 @@ def seed_additional_species():
                    park_name_part.startswith("Tous les parcs"):
                     # Link to all parks
                     for park in all_parks:
-                        link = ParkSpeciesLink(park_id=park.id, species_id=species.id)
+                        link = ParkSpeciesLink(park_id=park.id, species_id=species.species_id)
                         session.add(link)
                 else:
                     # Find matching park
                     for full_name, park in park_dict.items():
                         if park_name_part.lower() in full_name.lower():
-                            link = ParkSpeciesLink(park_id=park.id, species_id=species.id)
+                            link = ParkSpeciesLink(park_id=park.id, species_id=species.species_id)
                             session.add(link)
                             break
             
