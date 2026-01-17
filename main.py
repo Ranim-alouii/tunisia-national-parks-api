@@ -4,9 +4,10 @@ from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, HTTPException, Request, Depends, status, File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 from jose import JWTError, jwt
@@ -25,12 +26,7 @@ from utils import (
     PARKS_DIR,
     SPECIES_DIR,
 )
-
 from weather_service import get_weather_for_location, get_weather_forecast
-
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
-
 
 app = FastAPI(
     title="Tunisia National Parks API",
@@ -46,12 +42,10 @@ app = FastAPI(
     * **Maps & Navigation**: Google Maps integration with directions
     * **Route Information**: Get travel directions and safety tips
     * **Emergency**: Report emergencies with location data
+    * **Biodiversity**: Complete fauna and flora with safety guidelines and medicinal information
     """,
-    version="1.0.0",
+    version="2.0.0",
 )
-
-templates = Jinja2Templates(directory="templates")
-
 
 # Add CORS middleware
 app.add_middleware(
@@ -71,6 +65,9 @@ logging.basicConfig(
 
 # Mount uploads directory for serving static files
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+# Templates for interactive map
+templates = Jinja2Templates(directory="templates")
 
 
 @app.middleware("http")
@@ -207,7 +204,7 @@ def on_startup():
 @app.get("/api/health", tags=["Health"])
 def health_check():
     """Check if the API is running"""
-    return {"status": "ok"}
+    return {"status": "ok", "version": "2.0.0"}
 
 
 @app.post("/auth/token", response_model=Token, tags=["Authentication"])
@@ -259,6 +256,115 @@ class ParkUpdate(BaseModel):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     area_km2: float | None = Field(default=None, gt=0)
+
+
+# ---------- SPECIES MODELS ----------
+
+class Species(BaseModel):
+    id: int
+    name: str
+    type: Literal["animal", "plant"]
+    scientific_name: str
+    description: str
+    threats: str
+    protection_measures: str
+    safety_guidelines: str
+    medicinal_use: str | None = None
+    image_url: str | None = None
+    park_ids: List[int]
+
+
+class SpeciesCreate(BaseModel):
+    name: str
+    type: Literal["animal", "plant"]
+    scientific_name: str
+    description: str
+    threats: str
+    protection_measures: str
+    safety_guidelines: str = ""
+    medicinal_use: str | None = None
+    image_url: str | None = None
+    park_ids: List[int] = []
+
+
+class SpeciesUpdate(BaseModel):
+    name: str | None = None
+    type: Literal["animal", "plant"] | None = None
+    scientific_name: str | None = None
+    description: str | None = None
+    threats: str | None = None
+    protection_measures: str | None = None
+    safety_guidelines: str | None = None
+    medicinal_use: str | None = None
+    image_url: str | None = None
+    park_ids: List[int] | None = None
+
+
+# ---------- WEATHER & MAP MODELS ----------
+
+class WeatherResponse(BaseModel):
+    temperature: int
+    feels_like: int
+    temp_min: int
+    temp_max: int
+    humidity: int
+    pressure: int
+    description: str
+    icon: str
+    icon_url: str
+    wind_speed: float
+    wind_direction: int
+    clouds: int
+    visibility: float
+    sunrise: int
+    sunset: int
+    timezone: int
+    city_name: str
+
+
+class MapData(BaseModel):
+    park_id: int
+    park_name: str
+    latitude: float
+    longitude: float
+    governorate: str
+    google_maps_url: str
+    directions_url: str
+
+
+class DirectionsRequest(BaseModel):
+    origin_lat: float
+    origin_lng: float
+    destination_park_id: int
+
+
+# ---------- FILTER & SEARCH MODELS ----------
+
+class SearchResult(BaseModel):
+    total_results: int
+    parks: List[Park]
+
+
+class MultiParkRoute(BaseModel):
+    park_ids: List[int]
+
+
+class RoutePoint(BaseModel):
+    order: int
+    park_id: int
+    park_name: str
+    latitude: float
+    longitude: float
+    governorate: str
+    google_maps_url: str
+
+
+class MultiParkRouteResponse(BaseModel):
+    total_parks: int
+    total_distance_km: float
+    estimated_time_hours: float
+    route_points: List[RoutePoint]
+    google_maps_url: str
 
 
 # ---------- PARK ENDPOINTS ----------
@@ -456,80 +562,6 @@ def delete_park_image(
         return None
 
 
-# ---------- SPECIES MODELS ----------
-
-class Species(BaseModel):
-    id: int
-    name: str
-    type: Literal["animal", "plant"]
-    scientific_name: str
-    description: str
-    threats: str
-    protection_measures: str
-    image_url: str | None = None
-    park_ids: List[int]
-
-
-class SpeciesCreate(BaseModel):
-    name: str
-    type: Literal["animal", "plant"]
-    scientific_name: str
-    description: str
-    threats: str
-    protection_measures: str
-    image_url: str | None = None
-    park_ids: List[int] = []
-
-
-class SpeciesUpdate(BaseModel):
-    name: str | None = None
-    type: Literal["animal", "plant"] | None = None
-    scientific_name: str | None = None
-    description: str | None = None
-    threats: str | None = None
-    protection_measures: str | None = None
-    image_url: str | None = None
-    park_ids: List[int] | None = None
-
-
-# ---------- WEATHER & MAP MODELS ----------
-
-class WeatherResponse(BaseModel):
-    temperature: int
-    feels_like: int
-    temp_min: int
-    temp_max: int
-    humidity: int
-    pressure: int
-    description: str
-    icon: str
-    icon_url: str
-    wind_speed: float
-    wind_direction: int
-    clouds: int
-    visibility: float
-    sunrise: int
-    sunset: int
-    timezone: int
-    city_name: str
-
-
-class MapData(BaseModel):
-    park_id: int
-    park_name: str
-    latitude: float
-    longitude: float
-    governorate: str
-    google_maps_url: str
-    directions_url: str
-
-
-class DirectionsRequest(BaseModel):
-    origin_lat: float
-    origin_lng: float
-    destination_park_id: int
-
-
 # ---------- SPECIES ENDPOINTS ----------
 
 @app.get("/api/species", response_model=List[Species], tags=["Species"])
@@ -567,6 +599,8 @@ def list_species(
                 description=s.description,
                 threats=s.threats,
                 protection_measures=s.protection_measures,
+                safety_guidelines=s.safety_guidelines,
+                medicinal_use=s.medicinal_use,
                 image_url=get_file_url(s.image_url, "species") if s.image_url else None,
                 park_ids=[p.id for p in s.parks],
             )
@@ -590,6 +624,8 @@ def get_species(species_id: int):
             description=s.description,
             threats=s.threats,
             protection_measures=s.protection_measures,
+            safety_guidelines=s.safety_guidelines,
+            medicinal_use=s.medicinal_use,
             image_url=get_file_url(s.image_url, "species") if s.image_url else None,
             park_ids=[p.id for p in s.parks],
         )
@@ -612,6 +648,8 @@ def list_species_for_park(park_id: int):
                 description=s.description,
                 threats=s.threats,
                 protection_measures=s.protection_measures,
+                safety_guidelines=s.safety_guidelines,
+                medicinal_use=s.medicinal_use,
                 image_url=get_file_url(s.image_url, "species") if s.image_url else None,
                 park_ids=[p.id for p in s.parks],
             )
@@ -633,6 +671,8 @@ def create_species(
             description=species_in.description,
             threats=species_in.threats,
             protection_measures=species_in.protection_measures,
+            safety_guidelines=species_in.safety_guidelines,
+            medicinal_use=species_in.medicinal_use,
             image_url=species_in.image_url,
         )
         session.add(species_db)
@@ -656,6 +696,8 @@ def create_species(
             description=species_db.description,
             threats=species_db.threats,
             protection_measures=species_db.protection_measures,
+            safety_guidelines=species_db.safety_guidelines,
+            medicinal_use=species_db.medicinal_use,
             image_url=get_file_url(species_db.image_url, "species") if species_db.image_url else None,
             park_ids=[p.id for p in species_db.parks],
         )
@@ -682,6 +724,8 @@ def update_species(
             "description",
             "threats",
             "protection_measures",
+            "safety_guidelines",
+            "medicinal_use",
             "image_url",
         }
         for field in simple_fields:
@@ -713,6 +757,8 @@ def update_species(
             description=species_db.description,
             threats=species_db.threats,
             protection_measures=species_db.protection_measures,
+            safety_guidelines=species_db.safety_guidelines,
+            medicinal_use=species_db.medicinal_use,
             image_url=get_file_url(species_db.image_url, "species") if species_db.image_url else None,
             park_ids=[p.id for p in species_db.parks],
         )
@@ -875,6 +921,23 @@ async def get_park_forecast(park_id: int, days: int = 5):
 
 # ---------- MAP & DIRECTIONS ENDPOINTS ----------
 
+@app.get("/map", response_class=HTMLResponse, tags=["Maps & Navigation"])
+async def view_interactive_map(request: Request):
+    """
+    View an interactive map with all national parks.
+    
+    Features:
+    - 🗺️ Interactive map with all parks marked
+    - 📍 Click markers to see park details
+    - 🌤️ Real-time weather for each park
+    - 🧭 Get directions from your current location
+    - 📱 Mobile-friendly and responsive
+    
+    This uses OpenStreetMap (free, no API key needed).
+    """
+    return templates.TemplateResponse("map.html", {"request": request})
+
+
 @app.get("/api/parks/{park_id}/map", response_model=MapData, tags=["Maps & Navigation"])
 def get_park_map_data(park_id: int):
     """
@@ -971,21 +1034,204 @@ def get_directions_to_park(directions: DirectionsRequest):
         }
 
 
-@app.get("/map", response_class=HTMLResponse, tags=["Maps & Navigation"])
-async def view_interactive_map(request: Request):
+# ---------- FILTER & SEARCH ENDPOINTS ----------
+
+@app.get("/api/parks/filter", response_model=List[Park], tags=["Maps & Navigation"])
+def filter_parks(
+    governorate: str | None = None,
+    min_area_km2: float | None = None,
+    max_area_km2: float | None = None,
+):
     """
-    View an interactive map with all national parks.
+    Filter parks by various criteria.
     
-    Features:
-    - 🗺️ Interactive map with all parks marked
-    - 📍 Click markers to see park details
-    - 🌤️ Real-time weather for each park
-    - 🧭 Get directions from your current location
-    - 📱 Mobile-friendly and responsive
-    
-    This uses OpenStreetMap (free, no API key needed).
+    Filters:
+    - **governorate**: Filter by governorate name (e.g., "Bizerte", "Kasserine")
+    - **min_area_km2**: Minimum park area in square kilometers
+    - **max_area_km2**: Maximum park area in square kilometers
     """
-    return templates.TemplateResponse("map.html", {"request": request})
+    with Session(engine) as session:
+        statement = select(ParkDB)
+        
+        if governorate:
+            statement = statement.where(ParkDB.governorate.ilike(f"%{governorate}%"))
+        
+        if min_area_km2 is not None:
+            statement = statement.where(ParkDB.area_km2 >= min_area_km2)
+        
+        if max_area_km2 is not None:
+            statement = statement.where(ParkDB.area_km2 <= max_area_km2)
+        
+        parks_db = session.exec(statement).all()
+        
+        return [
+            Park(
+                id=p.id,
+                name=p.name,
+                governorate=p.governorate,
+                description=p.description,
+                latitude=p.latitude,
+                longitude=p.longitude,
+                area_km2=p.area_km2,
+                images=[get_file_url(img, "parks") for img in (p.images or [])],
+            )
+            for p in parks_db
+        ]
+
+
+@app.get("/api/parks/search", response_model=SearchResult, tags=["Maps & Navigation"])
+def search_parks(q: str):
+    """
+    Search parks by name, description, or governorate.
+    
+    Example searches:
+    - "Ichkeul" - Find Ichkeul park
+    - "Bizerte" - Find parks in Bizerte
+    - "cerf" - Find parks with deer (cerf)
+    - "desert" - Find desert parks
+    """
+    if not q or len(q.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+    
+    with Session(engine) as session:
+        search_term = f"%{q}%"
+        statement = select(ParkDB).where(
+            (ParkDB.name.ilike(search_term)) |
+            (ParkDB.description.ilike(search_term)) |
+            (ParkDB.governorate.ilike(search_term))
+        )
+        
+        parks_db = session.exec(statement).all()
+        
+        parks = [
+            Park(
+                id=p.id,
+                name=p.name,
+                governorate=p.governorate,
+                description=p.description,
+                latitude=p.latitude,
+                longitude=p.longitude,
+                area_km2=p.area_km2,
+                images=[get_file_url(img, "parks") for img in (p.images or [])],
+            )
+            for p in parks_db
+        ]
+        
+        return SearchResult(
+            total_results=len(parks),
+            parks=parks
+        )
+
+
+@app.get("/api/governorates", tags=["Maps & Navigation"])
+def list_governorates():
+    """
+    Get list of all governorates that have national parks.
+    
+    Useful for filtering parks by region.
+    """
+    with Session(engine) as session:
+        parks = session.exec(select(ParkDB)).all()
+        governorates = sorted(set(p.governorate for p in parks))
+        
+        # Count parks per governorate
+        gov_counts = {}
+        for park in parks:
+            gov_counts[park.governorate] = gov_counts.get(park.governorate, 0) + 1
+        
+        return {
+            "total_governorates": len(governorates),
+            "governorates": [
+                {
+                    "name": gov,
+                    "park_count": gov_counts[gov]
+                }
+                for gov in governorates
+            ]
+        }
+
+
+@app.post("/api/maps/multi-park-route", response_model=MultiParkRouteResponse, tags=["Maps & Navigation"])
+def plan_multi_park_route(route_request: MultiParkRoute):
+    """
+    Plan a route visiting multiple parks in order.
+    
+    Provide a list of park IDs in the order you want to visit them.
+    Returns a route with distance estimates and Google Maps link.
+    
+    Example: Visit Ichkeul, then Boukornine, then Zaghouan
+    """
+    if not route_request.park_ids or len(route_request.park_ids) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Please provide at least 2 park IDs for route planning"
+        )
+    
+    with Session(engine) as session:
+        route_points = []
+        total_distance = 0.0
+        
+        for i, park_id in enumerate(route_request.park_ids):
+            park = session.get(ParkDB, park_id)
+            if not park:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Park with ID {park_id} not found"
+                )
+            
+            google_maps_url = f"https://www.google.com/maps?q={park.latitude},{park.longitude}"
+            
+            route_points.append(
+                RoutePoint(
+                    order=i + 1,
+                    park_id=park.id,
+                    park_name=park.name,
+                    latitude=park.latitude,
+                    longitude=park.longitude,
+                    governorate=park.governorate,
+                    google_maps_url=google_maps_url,
+                )
+            )
+            
+            # Calculate distance to next park (simple Euclidean distance)
+            if i > 0:
+                prev_park = session.get(ParkDB, route_request.park_ids[i - 1])
+                if prev_park:
+                    # Rough distance calculation (1 degree ≈ 111 km)
+                    lat_diff = park.latitude - prev_park.latitude
+                    lng_diff = park.longitude - prev_park.longitude
+                    distance = ((lat_diff ** 2 + lng_diff ** 2) ** 0.5) * 111
+                    total_distance += distance
+        
+        # Estimate driving time (average 60 km/h)
+        estimated_hours = total_distance / 60.0
+        
+        # Build Google Maps multi-stop route URL
+        waypoints = []
+        for point in route_points[1:-1]:  # Middle points as waypoints
+            waypoints.append(f"{point.latitude},{point.longitude}")
+        
+        origin = route_points[0]
+        destination = route_points[-1]
+        
+        maps_url = (
+            f"https://www.google.com/maps/dir/?api=1"
+            f"&origin={origin.latitude},{origin.longitude}"
+            f"&destination={destination.latitude},{destination.longitude}"
+        )
+        
+        if waypoints:
+            maps_url += f"&waypoints={"|".join(waypoints)}"
+        
+        maps_url += "&travelmode=driving"
+        
+        return MultiParkRouteResponse(
+            total_parks=len(route_points),
+            total_distance_km=round(total_distance, 2),
+            estimated_time_hours=round(estimated_hours, 2),
+            route_points=route_points,
+            google_maps_url=maps_url,
+        )
 
 
 # ---------- ROUTE & EMERGENCY ----------
@@ -1127,4 +1373,3 @@ def handle_emergency(payload: EmergencyRequest):
         emergency_numbers=emergency_numbers,
         park_info=park_info,
     )
-# ---------- END OF FILE ----------
