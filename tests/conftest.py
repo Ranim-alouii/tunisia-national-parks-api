@@ -3,9 +3,14 @@ Test configuration and fixtures for the Tunisia National Parks API
 """
 
 import pytest
+import sys
+import os
 from fastapi.testclient import TestClient
 from sqlmodel import Session, create_engine, SQLModel
 from sqlalchemy.pool import StaticPool
+
+# Add the parent directory to the path to import main module
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from main import app
 from database import init_db, engine
