@@ -96,6 +96,30 @@ async def get_unsplash_images(query: str, count: int = 10) -> List[dict]:
         return []
 
 
+async def get_wikipedia_summary(title: str) -> dict:
+    """
+    Get Wikipedia summary for a given title.
+    """
+    url = "https://en.wikipedia.org/api/rest_v1/page/summary/" + title.replace(" ", "_")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    "title": data.get("title", ""),
+                    "extract": data.get("extract", ""),
+                    "url": data.get("content_urls", {}).get("desktop", {}).get("page", ""),
+                    "thumbnail": data.get("thumbnail", {}).get("source", "") if data.get("thumbnail") else None,
+                }
+            else:
+                return {}
+    except Exception as e:
+        logger.error(f"Wikipedia API error: {e}")
+        return {}
+
+
 # ---------- APP & GLOBAL MIDDLEWARE ----------
 
 app = FastAPI(
@@ -1394,3 +1418,30 @@ async def get_park_unsplash_images(park_id: int, count: int = Query(10, ge=1, le
         images = await get_unsplash_images(query, count)
 
         return [UnsplashImage(**img) for img in images]
+
+
+@app.get("/api/parks/{park_id}/wikipedia", tags=["Public APIs"])
+async def get_park_wikipedia_info(park_id: int):
+    """
+    Get Wikipedia summary information for a park.
+
+    - park_id: The ID of the park
+    """
+    with Session(engine) as session:
+        park = session.get(ParkDB, park_id)
+        if park is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+
+        # Try to find Wikipedia page using park name
+        title = f"{park.name} National Park"
+        info = await get_wikipedia_summary(title)
+
+        if not info:
+            # Fallback to just park name
+            info = await get_wikipedia_summary(park.name)
+
+        return {
+            "park_id": park.id,
+            "park_name": park.name,
+            "wikipedia_info": info,
+        }
