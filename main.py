@@ -120,6 +120,52 @@ async def get_wikipedia_summary(title: str) -> dict:
         return {}
 
 
+async def get_nearby_places(lat: float, lng: float, place_type: str = "restaurant", radius: int = 5000) -> List[dict]:
+    """
+    Get nearby places using Google Places API.
+    """
+    if not settings.GOOGLE_PLACES_API_KEY:
+        return []
+
+    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+    params = {
+        "location": f"{lat},{lng}",
+        "radius": radius,
+        "type": place_type,
+        "key": settings.GOOGLE_PLACES_API_KEY
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("status") == "OK":
+                    return [
+                        {
+                            "name": place.get("name", ""),
+                            "address": place.get("vicinity", ""),
+                            "rating": place.get("rating", 0),
+                            "price_level": place.get("price_level", 0),
+                            "types": place.get("types", []),
+                            "location": {
+                                "lat": place["geometry"]["location"]["lat"],
+                                "lng": place["geometry"]["location"]["lng"]
+                            },
+                            "place_id": place.get("place_id", ""),
+                            "open_now": place.get("opening_hours", {}).get("open_now", None)
+                        }
+                        for place in data.get("results", [])
+                    ]
+                else:
+                    return []
+            else:
+                return []
+    except Exception as e:
+        logger.error(f"Google Places API error: {e}")
+        return []
+
+
 # ---------- APP & GLOBAL MIDDLEWARE ----------
 
 app = FastAPI(
@@ -1398,6 +1444,41 @@ def get_directions_to_park(directions: DirectionsRequest):
         }
 
 
+# ---------- FRONTEND PAGES ----------
+
+@app.get("/", response_class=HTMLResponse, tags=["Frontend"])
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/parks", response_class=HTMLResponse, tags=["Frontend"])
+async def view_parks(request: Request):
+    return templates.TemplateResponse("parks.html", {"request": request})
+
+@app.get("/parks/{park_id}", response_class=HTMLResponse, tags=["Frontend"])
+async def view_park_detail(request: Request, park_id: int):
+    return templates.TemplateResponse("park_detail.html", {"request": request, "park_id": park_id})
+
+@app.get("/trails", response_class=HTMLResponse, tags=["Frontend"])
+async def view_trails(request: Request):
+    return templates.TemplateResponse("trails.html", {"request": request})
+
+@app.get("/species", response_class=HTMLResponse, tags=["Frontend"])
+async def view_species(request: Request):
+    return templates.TemplateResponse("species.html", {"request": request})
+
+@app.get("/comparison", response_class=HTMLResponse, tags=["Frontend"])
+async def view_comparison(request: Request):
+    return templates.TemplateResponse("comparison.html", {"request": request})
+
+@app.get("/emergency", response_class=HTMLResponse, tags=["Frontend"])
+async def view_emergency(request: Request):
+    return templates.TemplateResponse("emergency.html", {"request": request})
+
+@app.get("/chat", response_class=HTMLResponse, tags=["Frontend"])
+async def view_chat(request: Request):
+    return templates.TemplateResponse("chat.html", {"request": request})
+
+
 # ---------- PUBLIC API ENDPOINTS ----------
 
 @app.get("/api/parks/{park_id}/unsplash-images", response_model=List[UnsplashImage], tags=["Public APIs"])
@@ -1444,4 +1525,38 @@ async def get_park_wikipedia_info(park_id: int):
             "park_id": park.id,
             "park_name": park.name,
             "wikipedia_info": info,
+        }
+
+
+@app.get("/api/parks/{park_id}/nearby-places", tags=["Public APIs"])
+async def get_nearby_places_for_park(
+    park_id: int,
+    place_type: str = Query("restaurant", description="Type of place (restaurant, hotel, etc.)"),
+    radius: int = Query(5000, ge=1000, le=50000, description="Search radius in meters")
+):
+    """
+    Get nearby places (restaurants, hotels, etc.) around a park using Google Places API.
+
+    - park_id: The ID of the park
+    - place_type: Type of places to search for
+    - radius: Search radius in meters (1000-50000)
+    """
+    with Session(engine) as session:
+        park = session.get(ParkDB, park_id)
+        if park is None:
+            raise HTTPException(status_code=404, detail="Park not found")
+
+        places = await get_nearby_places(park.latitude, park.longitude, place_type, radius)
+
+        return {
+            "park_id": park.id,
+            "park_name": park.name,
+            "search_location": {
+                "latitude": park.latitude,
+                "longitude": park.longitude
+            },
+            "place_type": place_type,
+            "radius_meters": radius,
+            "places": places,
+            "total_results": len(places)
         }
