@@ -71,9 +71,9 @@
         </div>
 
         <!-- Parks Grid -->
-        <div class="grid grid-3 stagger-children" id="parksGrid">
+        <div class="responsive-grid" id="parksGrid">
             <!-- Skeleton loading -->
-            <div class="card skeleton">
+            <div class="card-professional skeleton">
                 <div class="skeleton-image"></div>
                 <div class="card-content">
                     <div class="skeleton-title"></div>
@@ -81,7 +81,7 @@
                     <div class="skeleton-text"></div>
                 </div>
             </div>
-            <div class="card skeleton">
+            <div class="card-professional skeleton">
                 <div class="skeleton-image"></div>
                 <div class="card-content">
                     <div class="skeleton-title"></div>
@@ -89,7 +89,7 @@
                     <div class="skeleton-text"></div>
                 </div>
             </div>
-            <div class="card skeleton">
+            <div class="card-professional skeleton">
                 <div class="skeleton-image"></div>
                 <div class="card-content">
                     <div class="skeleton-title"></div>
@@ -203,10 +203,16 @@ function displayParks(parks) {
 
     if (parks.length === 0) {
         container.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                <i class="fas fa-search" style="font-size: 3rem; color: var(--text-tertiary); margin-bottom: 1rem;"></i>
-                <h3 style="color: var(--text-secondary);">Aucun parc trouvé</h3>
-                <p style="color: var(--text-tertiary);">Essayez de modifier vos critères de recherche.</p>
+            <div class="empty-state-professional" style="grid-column: 1 / -1;">
+                <div class="empty-state-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3 class="empty-state-title">Aucun parc trouvé</h3>
+                <p class="empty-state-description">Essayez de modifier vos critères de recherche ou consultez tous les parcs disponibles.</p>
+                <div class="empty-state-actions">
+                    <button onclick="resetFilters()" class="btn btn-outline">Réinitialiser les filtres</button>
+                    <a href="/map" class="btn btn-primary">Voir la carte</a>
+                </div>
             </div>
         `;
         return;
@@ -316,6 +322,18 @@ function updateLoadMoreButton() {
     } else {
         loadMoreBtn.style.display = 'none';
     }
+}
+
+function resetFilters() {
+    currentSearch = '';
+    currentFilter = 'all';
+    document.getElementById('searchInput').value = '';
+    document.getElementById('governorateFilter').value = '';
+    document.getElementById('minAreaFilter').value = '';
+    document.getElementById('maxAreaFilter').value = '';
+    document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+    document.querySelector('.filter-tag[data-type="all"]').classList.add('active');
+    applyFilters();
 }
 
 function loadMoreParks() {

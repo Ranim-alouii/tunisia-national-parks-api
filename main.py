@@ -273,22 +273,17 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"error": {"code": 422, "message": "Validation failed", "details": exc.errors()}},
     )
 
-# Frontend routes
+# Frontend routes - SPA routing: serve index.html for all non-API routes
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.get("/parks", response_class=HTMLResponse)
-async def view_parks(request: Request):
-    return templates.TemplateResponse("parks.html", {"request": request})
-
-@app.get("/species", response_class=HTMLResponse)
-async def view_species(request: Request):
-    return templates.TemplateResponse("species.html", {"request": request})
-
-@app.get("/map", response_class=HTMLResponse)
-async def view_map(request: Request):
-    return templates.TemplateResponse("map.html", {"request": request})
+@app.get("/{path:path}", response_class=HTMLResponse)
+async def catch_all_frontend(path: str, request: Request):
+    # Serve index.html for all non-API routes to enable SPA routing
+    if path.startswith("api/") or path in ["static", "uploads"]:
+        raise HTTPException(status_code=404, detail="Not found")
+    return templates.TemplateResponse("index.html", {"request": request})
 
 # Health check
 @app.get("/api/health")
