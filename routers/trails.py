@@ -14,10 +14,10 @@ router = APIRouter(prefix="/api/trails", tags=["Trails"])
 
 # ---------- TRAIL MODELS ----------
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class Trail(BaseModel):
-    id: int
+    id: int = Field(alias="trail_id")
     park_id: int
     name: str
     description: str
@@ -28,6 +28,9 @@ class Trail(BaseModel):
     trail_type: str
     surface: str | None = None
     highlights: List[str] | None = None
+
+    class Config:
+        from_attributes = True
 
 class TrailCreate(BaseModel):
     park_id: int

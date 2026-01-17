@@ -15,10 +15,10 @@ router = APIRouter(prefix="/api/species", tags=["Species"])
 
 # ---------- SPECIES MODELS ----------
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class Species(BaseModel):
-    id: int
+    id: int = Field(alias="species_id")
     name: str
     type: Literal["animal", "plant"]
     scientific_name: str
@@ -29,6 +29,9 @@ class Species(BaseModel):
     medicinal_use: str | None = None
     image_url: str | None = None
     park_ids: List[int]
+
+    class Config:
+        from_attributes = True
 
 class SpeciesCreate(BaseModel):
     name: str
