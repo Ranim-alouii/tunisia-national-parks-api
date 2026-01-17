@@ -303,6 +303,52 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIASGIMiddleware)
 
+
+# Security middleware for headers
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Add security headers to all responses"""
+    response = await call_next(request)
+
+    # Content Security Policy
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+        "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
+        "img-src 'self' data: https: blob:; "
+        "connect-src 'self' https://api.unsplash.com https://api.openweathermap.org https://maps.googleapis.com; "
+        "frame-ancestors 'none';"
+    )
+
+    # HTTPS Strict Transport Security (HSTS)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+    # Prevent clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+
+    # Prevent MIME type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+
+    # Referrer Policy
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # Permissions Policy (formerly Feature Policy)
+    response.headers["Permissions-Policy"] = (
+        "geolocation=(self), "
+        "camera=(), "
+        "microphone=(), "
+        "magnetometer=(), "
+        "gyroscope=(), "
+        "accelerometer=(), "
+        "payment=()"
+    )
+
+    # Remove server information
+    response.headers.pop("Server", None)
+
+    return response
+
 # Logging
 logger = logging.getLogger("tunisia_parks")
 logging.basicConfig(

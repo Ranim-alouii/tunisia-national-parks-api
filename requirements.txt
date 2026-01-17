@@ -11,3 +11,10 @@ httpx
 jinja2
 slowapi
 limits
+
+# Testing dependencies
+pytest
+pytest-asyncio
+pytest-cov
+httpx
+requests
