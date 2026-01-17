@@ -5,7 +5,7 @@ Adds comprehensive fauna and flora information with detailed biology and safety 
 """
 
 from models import *
-from database import engine, init_db
+from database import engine,, get_engine init_db
 from sqlmodel import Session, select
 import json
 
@@ -277,7 +277,7 @@ def seed_enhanced_species():
         }
     ]
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         for species_data in enhanced_species_data:
             # Check if species already exists
             existing = session.exec(
@@ -343,7 +343,7 @@ def update_park_species_links():
         }
     ]
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         for link_data in enhanced_links:
             # Get park
             park = session.exec(
@@ -431,7 +431,7 @@ def add_more_parks():
         }
     ]
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         for park_data in additional_parks:
             # Check if park already exists
             existing = session.exec(

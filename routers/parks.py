@@ -68,19 +68,36 @@ def list_parks(
         # Apply pagination
         parks_db = query.offset(skip).limit(limit).all()
 
-        return [
-            Park(
-                id=p.id,
-                name=p.name,
-                governorate=p.governorate,
-                description=p.description,
-                latitude=p.latitude,
-                longitude=p.longitude,
-                area_km2=p.area_km2,
-                images=[get_file_url(img, "parks") for img in (p.images or [])],
-            )
-            for p in parks_db
-        ]
+        import json
+        result = []
+        for p in parks_db:
+            try:
+                images_list = json.loads(p.images) if p.images else []
+                processed_images = [get_file_url(img, "parks") for img in images_list]
+                result.append(Park(
+                    id=p.id,
+                    name=p.name,
+                    governorate=p.governorate,
+                    description=p.description,
+                    latitude=p.latitude,
+                    longitude=p.longitude,
+                    area_km2=p.area_km2,
+                    images=processed_images,
+                ))
+            except Exception as e:
+                print(f"Error processing park {p.id}: {e}")
+                # Fallback: return empty images list
+                result.append(Park(
+                    id=p.id,
+                    name=p.name,
+                    governorate=p.governorate,
+                    description=p.description,
+                    latitude=p.latitude,
+                    longitude=p.longitude,
+                    area_km2=p.area_km2,
+                    images=[],
+                ))
+        return result
 
 @router.get("/{park_id}", response_model=Park)
 def get_park(park_id: int):
@@ -90,6 +107,7 @@ def get_park(park_id: int):
         if park is None:
             raise HTTPException(status_code=404, detail="Park not found")
 
+        import json
         return Park(
             id=park.id,
             name=park.name,
@@ -98,7 +116,7 @@ def get_park(park_id: int):
             latitude=park.latitude,
             longitude=park.longitude,
             area_km2=park.area_km2,
-            images=[get_file_url(img, "parks") for img in (park.images or [])],
+            images=[get_file_url(img, "parks") for img in (json.loads(park.images) if park.images else [])],
         )
 
 @router.post("/", response_model=Park, status_code=201)
@@ -144,6 +162,7 @@ def update_park(park_id: int, park_in: ParkUpdate):
         session.commit()
         session.refresh(park_db)
 
+        import json
         return Park(
             id=park_db.id,
             name=park_db.name,
@@ -152,7 +171,7 @@ def update_park(park_id: int, park_in: ParkUpdate):
             latitude=park_db.latitude,
             longitude=park_db.longitude,
             area_km2=park_db.area_km2,
-            images=[get_file_url(img, "parks") for img in (park_db.images or [])],
+            images=[get_file_url(img, "parks") for img in (json.loads(park_db.images) if park_db.images else [])],
         )
 
 @router.delete("/{park_id}", status_code=204)

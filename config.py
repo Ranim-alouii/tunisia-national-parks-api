@@ -1,5 +1,6 @@
 from typing import List
 
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -27,10 +28,12 @@ class Settings(BaseSettings):
     UNSPLASH_ACCESS_KEY: str | None = None
     GOOGLE_PLACES_API_KEY: str | None = None
     NEWSAPI_API_KEY: str | None = None
+    SERPAPI_API_KEY: str | None = None
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+    )
 
     def get_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]

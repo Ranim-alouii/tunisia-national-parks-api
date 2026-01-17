@@ -1,142 +1,418 @@
-# Tunisia Protected Areas & Parks API
+# 🌿 Tunisia National Parks Platform
 
-This project provides a WDPA-inspired REST API for Tunisia's protected areas, plus a simple frontend map and a conservation pressure advisor.
+**A comprehensive full-stack platform for Tunisia's national parks and protected areas, featuring biodiversity data, interactive maps, weather integration, and environmental monitoring.**
 
-Tech stack: Python (FastAPI), PostgreSQL + PostGIS, SQLAlchemy, GeoAlchemy2, HTML/CSS/JS (Leaflet), Docker Compose.
+[![API Version](https://img.shields.io/badge/API-v3.0.0-blue.svg)](https://github.com/Ranim-alouii/tunisia-national-parks-api)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Quick start (with Docker):
+## 🌟 Overview
 
-```powershell
-# From project root
+This production-ready platform provides comprehensive access to Tunisia's national parks ecosystem, combining a REST API with a complete web frontend. Key features include:
+
+- **🏞️ Complete Park Database**: Detailed information on 18+ national parks and protected areas
+- **🦌 Biodiversity Management**: 250+ species of wildlife and plants with conservation status
+- **🗺️ Interactive Mapping**: OpenStreetMap integration with location services
+- **🌤️ Weather Integration**: Real-time weather data and forecasts for all park locations
+- **📸 Media Management**: Nature photography from Unsplash API with upload capabilities
+- **📰 Content Integration**: Environmental news and conservation updates
+- **⭐ User Engagement**: Reviews, ratings, and community features
+- **🎖️ Gamification**: Achievement system with badges and user statistics
+- **🔍 Advanced Search**: Multi-criteria filtering and search functionality
+- **🌐 Internationalization**: Multi-language support (French, English, Arabic)
+
+## 🏗️ Architecture
+
+```
+tunisia-parks-api/
+├── 🐍 main.py                 # FastAPI application & routes
+├── 🗄️ models.py               # SQLAlchemy models
+├── ⚙️ config.py               # Environment configuration
+├── 🗺️ routers/                # API route handlers
+│   ├── parks.py              # Park management
+│   ├── species.py            # Species & biodiversity
+│   └── auth.py               # Authentication
+├── 🌐 templates/             # Jinja2 HTML templates
+│   ├── base.html            # Base template
+│   ├── index.html           # Homepage
+│   ├── parks.html           # Parks listing
+│   ├── park_detail.html     # Park detail page
+│   ├── custom_docs.html     # Enhanced API docs
+│   └── map.html             # Interactive map
+├── 📊 static/               # Static assets (CSS/JS)
+├── 🧪 tests/                # Test suite
+├── 📋 requirements.txt      # Python dependencies
+├── 🐳 Dockerfile            # Container configuration
+├── 🐳 docker-compose.yml    # Multi-service setup
+└── 📖 README.md             # This file
+```
+
+## 🚀 Quick Start
+
+### Option 1: Docker (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/Ranim-alouii/tunisia-national-parks-api.git
+cd tunisia-national-parks-api
+
+# Start all services
 docker-compose up --build
 
-# API at http://localhost:8000
-# Open the frontend at http://localhost:8000/frontend/index.html (served by mounting frontend directory)
+# Access the application
+# 🌐 Frontend: http://localhost:8000
+# 📚 API Docs: http://localhost:8000/docs
+# 🔌 API Base: http://localhost:8000/api
 ```
 
-Seeding example data
---------------------
+### Option 2: Local Development
 
-After the API and DB are running you can seed demo data (creates one demo park, biodiversity feature and recent visitor stats) using the seed script inside the `api` service:
+```bash
+# Clone repository
+git clone https://github.com/Ranim-alouii/tunisia-national-parks-api.git
+cd tunisia-national-parks-api
 
-```powershell
-docker-compose exec api python app/scripts/seed_data.py
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# Initialize database
+python -c "from database import init_db; init_db()"
+
+# Start development server
+python main.py
+
+# Access the application
+# 🌐 Frontend: http://localhost:8002
+# 📚 API Docs: http://localhost:8002/docs
+# 🔌 API Base: http://localhost:8002/api
 ```
 
-This will insert a demo park named `Ichkeul National Park Demo` and 7 days of visitor counts used by the pressure advisor. You can then try:
+## ⚙️ Environment Configuration
 
-```powershell
-curl http://localhost:8000/api/v1/parks
-curl http://localhost:8000/api/v1/parks/<id>
-curl http://localhost:8000/api/v1/parks/<id>/pressure
+Create a `.env` file in the project root:
+
+```env
+# Database Configuration
+DATABASE_URL=sqlite:///./tunisia_parks.db
+# Or for PostgreSQL: postgresql://user:password@localhost/tunisia_parks
+
+# Security Settings
+SECRET_KEY=your-secret-key-here
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your-secure-admin-password
+
+# API Keys (Optional - Mock data available)
+OPENWEATHER_API_KEY=your_openweather_key
+UNSPLASH_ACCESS_KEY=your_unsplash_key
+GOOGLE_PLACES_API_KEY=your_google_key
+NEWSAPI_API_KEY=your_newsapi_key
+
+# Application Settings
+ENVIRONMENT=development
+DEBUG=true
+LOG_LEVEL=INFO
+
+# CORS Settings
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
 ```
 
-Serving the frontend
---------------------
+## 📋 API Endpoints
 
-The backend mounts the `frontend/` folder and serves the UI at `/frontend/index.html` by default. The compose file also includes an optional `frontend` nginx service exposing the static site on port `8080`.
+### 🌿 Parks Management
+- `GET /api/parks` - List all parks with filtering
+- `GET /api/parks/{id}` - Get park details
+- `POST /api/parks` - Create new park (admin)
+- `PUT /api/parks/{id}` - Update park (admin)
+- `DELETE /api/parks/{id}` - Delete park (admin)
 
-- UI via API static mount: http://localhost:8000/
-- UI via nginx (optional): http://localhost:8080/
+### 🦌 Species & Biodiversity
+- `GET /api/species` - List all species
+- `GET /api/species/{id}` - Get species details
+- `GET /api/parks/{id}/species` - Species in specific park
 
-OpenAPI YAML
-------------
-An `openapi.yaml` file with core endpoints is included in `backend/openapi.yaml`. You can also generate a fresh OpenAPI file from the running app:
+### 🗺️ Maps & Navigation
+- `GET /api/parks/{id}/map` - Park location data
+- `GET /api/maps/all-parks` - All parks map data
+- `POST /api/maps/directions` - Get directions
 
-```powershell
-docker-compose exec api python app/scripts/export_openapi.py
+### 🌤️ Weather Integration
+- `GET /api/parks/{id}/weather` - Current weather
+- `GET /api/parks/{id}/forecast` - Weather forecast
+
+### 📸 Media & Images
+- `GET /api/parks/{id}/unsplash-images` - Nature photos
+- `POST /api/parks/{id}/images` - Upload park images
+- `GET /api/parks/{id}/wikipedia` - Wikipedia information
+
+### 📰 Content & News
+- `GET /api/news/parks` - Environmental news
+- `GET /api/parks/{id}/nearby-places` - Nearby amenities
+
+### 👥 User Features
+- `GET /api/parks/{id}/reviews` - Park reviews
+- `POST /api/parks/{id}/reviews` - Add review
+- `GET /api/user/{id}/badges` - User achievements
+- `GET /api/user/{id}/stats` - User statistics
+
+### 🔍 Search & Discovery
+- `GET /api/search/parks` - Advanced park search
+- `GET /api/search/species` - Species search
+- `GET /api/search/suggestions` - Search suggestions
+
+## 🔐 Authentication
+
+The API supports JWT-based authentication:
+
+```bash
+# Get access token
+curl -X POST "http://localhost:8002/api/auth/token" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"your-password"}'
+
+# Use token in requests
+curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  http://localhost:8002/api/parks
 ```
 
-Docker troubleshooting
-----------------------
-If `docker-compose` fails, ensure Docker Desktop / Docker Engine is running on your machine. On Windows you may need to start Docker Desktop and enable WSL2 integration or configure the Docker daemon.
+## 🧪 Testing
 
-Common checks:
-- Start Docker Desktop (Windows) and confirm the whale icon is running.
-- Run `docker version` and `docker-compose version` to verify the CLI can reach the daemon.
-- If you get pipe errors like "dockerDesktopLinuxEngine" failing to connect, restart Docker Desktop.
+```bash
+# Run all tests
+pytest
 
+# Run with coverage
+pytest --cov=. --cov-report=html
 
+# Run specific test file
+pytest tests/test_parks.py
 
-Alembic migrations
-------------------
-
-Alembic is configured under `backend/alembic`. To create and run migrations from inside the running `api` container:
-
-```powershell
-docker-compose exec api alembic revision --autogenerate -m "create models"
-docker-compose exec api alembic upgrade head
+# Run API integration tests
+python test_localhost_apis.py
 ```
 
-The alembic `env.py` reads the `DATABASE_URL` from the app settings so migrations will run against the configured DB.
+## 📊 Sample API Usage
 
-API examples
-------------
-
-List parks (no geometry by default):
-
-```powershell
-curl http://localhost:8000/api/v1/parks
+### Get All Parks
+```bash
+curl "http://localhost:8002/api/parks?limit=5&governorate=Bizerte"
 ```
 
-Get park details (includes GeoJSON geometry and subresources):
-
-```powershell
-curl http://localhost:8000/api/v1/parks/<id>
+### Search Parks
+```bash
+curl "http://localhost:8002/api/search/parks?query=nature&min_area=100"
 ```
 
-Get computed conservation pressure for a park (today):
-
-```powershell
-curl http://localhost:8000/api/v1/parks/<id>/pressure
+### Get Park Weather
+```bash
+curl "http://localhost:8002/api/parks/1/weather"
 ```
 
-Search parks for hiking with low pressure:
-
-```powershell
-curl "http://localhost:8000/api/v1/search/parks?activity=hiking&pressure=low"
+### Get Nature Images
+```bash
+curl "http://localhost:8002/api/parks/1/unsplash-images?count=10"
 ```
 
-Write endpoints (create/update) require an API key header `x-api-key` matching `API_SECRET_KEY`.
+## 🗄️ Database Schema
 
-Authentication (JWT)
---------------------
-This project supports JWT-based admin tokens. Use the seeded admin user (`admin` / `adminpass`) created by the seed script, or create your own user via the DB.
+### Core Tables
+- **parks**: National parks information
+- **species**: Wildlife and plant species
+- **park_species**: Many-to-many park-species relationships
+- **trails**: Hiking trails within parks
+- **reviews**: User reviews and ratings
+- **users**: User accounts and profiles
 
-Get a token:
+### Gamification Tables
+- **badges**: Achievement definitions
+- **user_badges**: User earned badges
+- **user_stats**: User activity statistics
 
-```powershell
-curl -X POST http://localhost:8000/api/v1/auth/token -H "Content-Type: application/json" -d '{"username":"admin","password":"adminpass"}'
+### Content Tables
+- **sightings**: Wildlife sightings reports
+- **user_visit_history**: Park visit tracking
+
+## 🐳 Docker Deployment
+
+### Development Setup
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  api:
+    build: .
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./tunisia_parks.db
+      - ENVIRONMENT=development
+    volumes:
+      - ./uploads:/app/uploads
+      - ./tunisia_parks.db:/app/tunisia_parks.db
 ```
 
-Then include the token in requests:
+### Production Setup
+```yaml
+# docker-compose.prod.yml
+version: '3.8'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db/tunisia_parks
+      - ENVIRONMENT=production
+    depends_on:
+      - db
+    volumes:
+      - uploads:/app/uploads
 
-```powershell
-curl -X POST http://localhost:8000/api/v1/parks -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"name_en":"New Park"}'
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      - POSTGRES_DB=tunisia_parks
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - uploads:/var/www/uploads
 ```
 
+## 🔧 Development Features
 
-Conservation pressure algorithm (summary)
---------------------------------------
-- Base score from recent visitors: 7-day average scaled to a base 0–60 value (assumes nominal capacity of 500 visitors).
-- Biodiversity sensitivity: +20 if the park has high-sensitivity features during configured critical months (e.g., March–April for migratory birds).
-- Seasonal modifiers: +10 during summer (Jun–Aug) and −10 during low season (Nov–Feb).
-- Final numeric score is clamped to 0–100 and mapped to levels: 0–40 `low`, 41–70 `medium`, 71–100 `high`.
+### Mock Data
+The API includes comprehensive mock data for all external services:
+- ✅ **Weather**: Realistic Tunisian weather patterns
+- ✅ **Images**: Curated nature photography
+- ✅ **News**: Environmental conservation articles
+- ✅ **Places**: Nearby amenities and services
 
-See `backend/app/services/pressure.py` for the documented implementation.
+### Enhanced API Documentation
+- Custom UI with Tunisia-themed design
+- Interactive examples and testing
+- Keyboard shortcuts (Ctrl+K for search)
+- Quick navigation between endpoints
 
+### Code Quality
+- **Type Hints**: Full type annotations
+- **Linting**: Black, isort, flake8
+- **Testing**: Pytest with async support
+- **Documentation**: Auto-generated OpenAPI specs
 
+## 📈 Monitoring & Analytics
 
+### Health Checks
+```bash
+# API health
+GET /api/health
 
-Important files:
-- `backend/` - FastAPI app and models
-- `frontend/` - static frontend (index.html, app.js, map.js)
-- `init_db/init_postgis.sql` - enables PostGIS on DB init
-- `docker-compose.yml` - orchestrates services
+# Database connectivity
+GET /health
+```
 
-Conservation pressure logic:
-- Uses recent visitor statistics (7-day average) to compute a base score
-- Adds modifiers for biodiversity sensitivity and seasonal patterns
-- Maps numeric score to `low`/`medium`/`high` and returns a recommendation string
+### Metrics (Prometheus)
+```bash
+# Metrics endpoint
+GET /metrics
+```
 
-See `backend/app/services/pressure.py` for the exact algorithm and comments.
+### Logging
+- Structured JSON logging
+- Request/response tracking
+- Error monitoring and alerts
+
+## 🌍 Internationalization
+
+Support for multiple languages:
+- 🇫🇷 **French** (Primary)
+- 🇺🇸 **English**
+- 🇹🇳 **Arabic** (RTL support)
+
+```bash
+# Get available languages
+GET /api/languages
+
+# Get translations
+GET /api/languages/fr
+```
+
+## 🔒 Security Features
+
+- **JWT Authentication** with configurable expiration
+- **CORS Protection** with configurable origins
+- **Rate Limiting** (60 requests/minute default)
+- **Input Validation** with Pydantic models
+- **SQL Injection Prevention** with SQLAlchemy
+- **XSS Protection** with Content Security Policy
+- **HTTPS Enforcement** in production
+
+## 📱 Frontend Integration
+
+The API serves a complete frontend application:
+
+### Pages
+- **🏠 Homepage**: Featured parks and statistics
+- **🏞️ Parks**: Browse all national parks
+- **🦌 Species**: Explore biodiversity
+- **🗺️ Map**: Interactive park locations
+- **⭐ Reviews**: User experiences
+
+### Technologies
+- **HTML5/CSS3**: Responsive design
+- **Vanilla JavaScript**: No frameworks required
+- **Leaflet.js**: Interactive maps
+- **Font Awesome**: Icons and UI elements
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+### Development Guidelines
+- Follow PEP 8 style guide
+- Add tests for new features
+- Update documentation
+- Use type hints
+- Write clear commit messages
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **Tunisia Ministry of Environment** for park data and conservation efforts
+- **OpenStreetMap contributors** for mapping data
+- **Unsplash** for nature photography
+- **OpenWeatherMap** for weather data
+- **FastAPI** community for excellent documentation
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/Ranim-alouii/tunisia-national-parks-api/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Ranim-alouii/tunisia-national-parks-api/discussions)
+- **Email**: Contact through GitHub
+
+---
+
+**🌿 Explore Tunisia's incredible natural heritage through our comprehensive parks API! 🇹🇳**

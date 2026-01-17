@@ -3,10 +3,10 @@ Check if species have image URLs in database
 """
 
 from sqlmodel import Session, select
-from database import engine
+from database import, get_engine engine
 from models import SpeciesDB
 
-with Session(engine) as session:
+with Session(get_engine()) as session:
     species = session.exec(select(SpeciesDB)).all()
     
     print(f"Total species: {len(species)}\n")

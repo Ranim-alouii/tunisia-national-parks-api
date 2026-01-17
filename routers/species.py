@@ -4,10 +4,10 @@ Species management router
 
 from typing import List, Literal
 from fastapi import APIRouter, HTTPException
-from sqlmodel import Session, select, or_
+from sqlmodel import Session, select, or_, delete
 
 from models import SpeciesDB, ParkSpeciesLink, ParkDB
-from database import engine
+from database import get_engine
 from utils import get_file_url
 
 # Create router
@@ -69,7 +69,7 @@ def list_species(
     limit: int = 50,
 ):
     """Get a list of all species with advanced filtering and sorting."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         stmt = select(SpeciesDB)
 
         # Apply filters
@@ -142,7 +142,7 @@ def list_species(
 @router.get("/{species_id}", response_model=Species)
 def get_species(species_id: int):
     """Get details of a specific species."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         s = session.get(SpeciesDB, species_id)
         if s is None:
             raise HTTPException(status_code=404, detail="Species not found")
@@ -169,7 +169,7 @@ def get_species(species_id: int):
 @router.post("/", response_model=Species, status_code=201)
 def create_species(species_in: SpeciesCreate):
     """Create a new species."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         species_db = SpeciesDB(
             name=species_in.name,
             type=species_in.type,
@@ -218,7 +218,7 @@ def create_species(species_in: SpeciesCreate):
 @router.put("/{species_id}", response_model=Species)
 def update_species(species_id: int, species_in: SpeciesUpdate):
     """Update an existing species."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         species_db = session.get(SpeciesDB, species_id)
         if species_db is None:
             raise HTTPException(status_code=404, detail="Species not found")
@@ -283,18 +283,15 @@ def update_species(species_id: int, species_in: SpeciesUpdate):
 @router.delete("/{species_id}", status_code=204)
 def delete_species(species_id: int):
     """Delete a species."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         species_db = session.get(SpeciesDB, species_id)
         if species_db is None:
             raise HTTPException(status_code=404, detail="Species not found")
 
+        # Delete all park-species links for this species
         session.exec(
-            select(ParkSpeciesLink)
-            .where(ParkSpeciesLink.species_id == species_db.species_id)
+            delete(ParkSpeciesLink).where(ParkSpeciesLink.species_id == species_db.species_id)
         )
-        session.query(ParkSpeciesLink).filter(
-            ParkSpeciesLink.species_id == species_db.species_id
-        ).delete(synchronize_session=False)
 
         session.delete(species_db)
         session.commit()

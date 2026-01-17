@@ -8,10 +8,14 @@ pydantic-settings
 python-dotenv
 pillow
 httpx
+aiohttp
 jinja2
 slowapi
 limits
 alembic
+aiofiles
+boto3
+cloudinary
 
 # Testing dependencies
 pytest
@@ -19,6 +23,3 @@ pytest-asyncio
 pytest-cov
 httpx
 requests
-
-# Monitoring dependencies
-prometheus-fastapi-instrumentator

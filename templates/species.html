@@ -87,6 +87,13 @@
 
 {% block extra_js %}
 <script>
+// Page-specific initialization for the species page
+window.pageInit = async function() {
+    console.log('Initializing species page...');
+    await loadSpecies();
+    setupEventListeners();
+};
+
 let allSpecies = [];
 let filteredSpecies = [];
 let currentFilter = 'all';
@@ -94,14 +101,98 @@ let currentSearch = '';
 
 async function loadSpecies() {
     try {
-        const response = await fetch('/api/species');
-        allSpecies = await response.json();
+        console.log('Loading species...');
+        window.Loading.show();
+
+        // Check URL parameters for filtering
+        const urlParams = new URLSearchParams(window.location.search);
+        const typeParam = urlParams.get('type');
+
+        // Build API URL with parameters
+        let apiUrl = '/api/species';
+        const params = new URLSearchParams();
+        if (typeParam) {
+            params.set('type', typeParam);
+        }
+
+        if (params.toString()) {
+            apiUrl += '?' + params.toString();
+        }
+
+        const response = await fetch(apiUrl);
+        const species = await response.json();
+
+        if (!species) {
+            console.error('Failed to load species data');
+            return;
+        }
+
+        allSpecies = species;
         filteredSpecies = [...allSpecies];
+
+        // Apply initial filter based on URL parameter
+        if (typeParam) {
+            if (typeParam === 'animal') {
+                currentFilter = 'animal';
+                filteredSpecies = allSpecies.filter(s => s.type === 'animal');
+            } else if (typeParam === 'plant') {
+                currentFilter = 'plant';
+                filteredSpecies = allSpecies.filter(s => s.type === 'plant');
+            }
+        }
+
         updateStats();
+
+        // Update filter button states
+        updateFilterButtons();
+
         displaySpecies(filteredSpecies.slice(0, 12)); // Show first 12
         updateLoadMoreButton();
+        window.Loading.hide();
     } catch (error) {
         console.error('Error loading species:', error);
+        window.Loading.hide();
+        // Show error message to user
+        const container = document.getElementById('speciesGrid');
+        if (container) {
+            container.innerHTML = '<div class="error-message">Erreur lors du chargement des espèces</div>';
+        }
+    }
+}
+
+function setupEventListeners() {
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+
+    if (searchInput && searchBtn) {
+        searchInput.addEventListener('input', (e) => {
+            currentSearch = e.target.value;
+            applyFilters();
+        });
+
+        searchBtn.addEventListener('click', applyFilters);
+    }
+
+    // Filter tags
+    document.querySelectorAll('.filter-tag').forEach(tag => {
+        tag.addEventListener('click', () => {
+            document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+            tag.classList.add('active');
+            currentFilter = tag.dataset.type;
+            applyFilters();
+        });
+    });
+
+    // Load more button
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', () => {
+            const currentCount = document.querySelectorAll('#speciesGrid .card').length;
+            const nextBatch = filteredSpecies.slice(currentCount, currentCount + 12);
+            displaySpecies(filteredSpecies.slice(0, currentCount + 12));
+            updateLoadMoreButton();
+        });
     }
 }
 
@@ -365,12 +456,26 @@ function closeModal() {
     }
 }
 
+function updateFilterButtons() {
+    // Update filter button states based on current filter
+    document.querySelectorAll('.filter-tag').forEach(tag => {
+        if (tag.dataset.type === currentFilter) {
+            tag.classList.add('active');
+        } else {
+            tag.classList.remove('active');
+        }
+    });
+}
+
 function updateLoadMoreButton() {
     const loadMoreBtn = document.getElementById('loadMoreBtn');
-    if (filteredSpecies.length > 12) {
-        loadMoreBtn.style.display = 'inline-flex';
-    } else {
+    const currentDisplayed = document.querySelectorAll('#speciesGrid .card').length;
+
+    // Hide button if all filtered species are already displayed
+    if (currentDisplayed >= filteredSpecies.length) {
         loadMoreBtn.style.display = 'none';
+    } else {
+        loadMoreBtn.style.display = 'inline-flex';
     }
 }
 

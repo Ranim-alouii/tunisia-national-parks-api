@@ -68,7 +68,8 @@ class TestSpeciesAPI:
         assert response.status_code == 404
         data = response.json()
         assert "error" in data
-        assert data["error"]["message"] == "Species not found"
+        assert data["error"]["code"] == 404
+        assert "Species not found" in data["error"]["message"]
 
     def test_update_species(self, client: TestClient, auth_headers: dict, sample_species_data: dict):
         """Test updating an existing species"""
@@ -202,6 +203,7 @@ class TestSpeciesAPI:
             "latitude": 36.8065,
             "longitude": 10.1815,
             "area_km2": 100.0,
+            "google_maps_url": "https://maps.google.com/?q=36.8065,10.1815",
         }
         park_response = client.post("/api/parks", json=park_data, headers=auth_headers)
         assert park_response.status_code == 201

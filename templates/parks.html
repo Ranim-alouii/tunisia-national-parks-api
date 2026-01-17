@@ -111,6 +111,13 @@
 
 {% block extra_js %}
 <script>
+// Page-specific initialization for the parks page
+window.pageInit = async function() {
+    console.log('Initializing parks page...');
+    await loadParks();
+    setupEventListeners();
+};
+
 let allParks = [];
 let filteredParks = [];
 let currentSearch = '';
@@ -120,19 +127,73 @@ const itemsPerPage = 9;
 
 async function loadParks() {
     try {
-        showLoading();
-        const response = await fetch('/api/parks');
-        allParks = await response.json();
+        console.log('Loading parks...');
+        window.Loading.show();
+        const parks = await window.API.getParks();
+
+        if (!parks) {
+            console.error('Failed to load parks data');
+            return;
+        }
+
+        allParks = parks;
         filteredParks = [...allParks];
         populateGovernorates();
         displayParks(filteredParks.slice(0, itemsPerPage));
         updateResultsCount();
         updateLoadMoreButton();
-        hideLoading();
+        window.Loading.hide();
     } catch (error) {
         console.error('Error loading parks:', error);
-        hideLoading();
-        showToast('Erreur lors du chargement des parcs', 'error');
+        window.Loading.hide();
+        // Show error message to user
+        const container = document.getElementById('parksGrid');
+        if (container) {
+            container.innerHTML = '<div class="error-message">Erreur lors du chargement des parcs</div>';
+        }
+    }
+}
+
+function setupEventListeners() {
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+
+    if (searchInput && searchBtn) {
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            currentSearch = e.target.value;
+            searchTimeout = setTimeout(applyFilters, 300);
+        });
+
+        searchBtn.addEventListener('click', applyFilters);
+    }
+
+    // Filter tags
+    document.querySelectorAll('.filter-tag').forEach(tag => {
+        tag.addEventListener('click', () => {
+            document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+            tag.classList.add('active');
+            currentFilter = tag.dataset.type || tag.dataset.governorate || tag.dataset.size || tag.dataset.rating || 'all';
+            applyFilters();
+        });
+    });
+
+    // Load more button
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', loadMoreParks);
+    }
+
+    // Keyboard shortcuts
+    if (searchInput) {
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                searchInput.focus();
+            }
+        });
     }
 }
 

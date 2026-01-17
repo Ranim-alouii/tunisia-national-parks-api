@@ -368,3 +368,131 @@ class HealthProfileDB(SQLModel, table=True):
         UniqueConstraint('user_id', name='unique_user_health_profile'),
         CheckConstraint('walking_distance_limit >= 0', name='positive_walking_limit'),
     )
+
+
+# ========== ENHANCED ECO-TOURISM MODELS ==========
+
+class SuitabilityScore(SQLModel):
+    """Model for visit suitability scoring results"""
+    score: float = Field(ge=0.0, le=100.0)
+    status: str = Field(regex="^(recommended|caution|not_recommended)$")
+    reasons: list[str] = Field(default_factory=list)
+    weather_score: float = Field(default=50.0)
+    health_score: float = Field(default=50.0)
+    distance_score: float = Field(default=50.0)
+    terrain_score: float = Field(default=50.0)
+
+
+class ParkComparison(SQLModel):
+    """Model for park comparison results"""
+    park_id: int
+    park_name: str
+    governorate: str
+    distance_km: float = Field(default=0.0)
+    suitability_score: float = Field(default=50.0)
+    status: str = Field(regex="^(recommended|caution|not_recommended)$")
+    weather_conditions: str = Field(default="")
+    terrain_difficulty: str = Field(regex="^(facile|modéré|difficile)$", default="modéré")
+    estimated_travel_time: str = Field(default="")
+    rank: int = Field(default=0)
+
+
+class WeatherData(SQLModel):
+    """Model for weather API data"""
+    temperature: float
+    feels_like: float
+    humidity: int
+    pressure: int
+    description: str
+    wind_speed: float
+    visibility: float
+    uv_index: Optional[float] = None
+    air_quality_index: Optional[int] = None
+
+
+class GBIFSpeciesData(SQLModel):
+    """Model for GBIF biodiversity data"""
+    species_key: int
+    scientific_name: str
+    vernacular_name: Optional[str] = None
+    kingdom: str
+    phylum: str
+    class_name: str
+    order: str
+    family: str
+    genus: str
+    species: str
+    conservation_status: Optional[str] = None
+    habitat: Optional[str] = None
+    distribution: Optional[str] = None
+    gbif_url: str
+
+
+class DistanceMatrix(SQLModel):
+    """Model for Google Distance Matrix API data"""
+    origin_lat: float
+    origin_lng: float
+    destination_lat: float
+    destination_lng: float
+    distance_meters: int
+    duration_seconds: int
+    duration_text: str
+    distance_text: str
+
+
+class EmergencyContact(SQLModel):
+    """Model for emergency contacts"""
+    contact_id: Optional[int] = Field(default=None, primary_key=True)
+    park_id: int = Field(foreign_key="parks.id")
+    name: str
+    phone: str
+    type: str = Field(regex="^(police|medical|fire|rangers)$")
+    latitude: float
+    longitude: float
+    address: Optional[str] = None
+    is_active: bool = Field(default=True)
+
+
+class ParkAlert(SQLModel):
+    """Model for park alerts and warnings"""
+    alert_id: Optional[int] = Field(default=None, primary_key=True)
+    park_id: int = Field(foreign_key="parks.id")
+    alert_type: str = Field(regex="^(weather|wildlife|maintenance|closure)$")
+    severity: str = Field(regex="^(low|medium|high|critical)$")
+    title: str
+    message: str
+    start_date: str
+    end_date: Optional[str] = None
+    is_active: bool = Field(default=True)
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class UserVisitHistory(SQLModel, table=True):
+    """Track user visits and preferences"""
+    __tablename__ = "user_visit_history"
+
+    visit_id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int
+    park_id: int = Field(foreign_key="parks.id")
+    visit_date: str
+    duration_hours: Optional[float] = None
+    activities_done: Optional[str] = None  # JSON array
+    species_seen: Optional[str] = None     # JSON array
+    rating: Optional[int] = Field(default=None, ge=1, le=5)
+    weather_conditions: Optional[str] = None
+    health_issues: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class ParkRecommendation(SQLModel):
+    """AI-powered park recommendations"""
+    recommendation_id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int
+    park_id: int = Field(foreign_key="parks.id")
+    recommendation_score: float = Field(ge=0.0, le=100.0)
+    recommendation_type: str = Field(regex="^(personalized|trending|similar_users|weather_based)$")
+    reasons: str  # JSON array of recommendation reasons
+    expires_at: Optional[str] = None
+    is_active: bool = Field(default=True)
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())

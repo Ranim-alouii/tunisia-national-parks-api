@@ -5,7 +5,7 @@ Run with: python seed_more_species.py
 """
 
 from sqlmodel import Session, select
-from database import engine
+from database import, get_engine engine
 from models import ParkDB, SpeciesDB, ParkSpeciesLink
 
 # Comprehensive species data
@@ -352,7 +352,7 @@ ADDITIONAL_SPECIES = [
 def seed_additional_species():
     """Add comprehensive species to existing database"""
     
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         print("=== ADDING 50+ SPECIES TO TUNISIA PARKS DATABASE ===\n")
         
         # Check existing

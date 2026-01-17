@@ -217,16 +217,32 @@ async function performComparison() {
     if (selectedParks.length < 2) return;
 
     try {
+        // Send park IDs as a comma-separated string in the query parameter
         const parkIds = selectedParks.map(p => p.id).join(',');
-        const response = await fetch(`/api/parks/compare?park_ids=${parkIds}`);
+        console.log('Comparing parks with IDs:', parkIds);
+
+        const response = await fetch(`/api/parks/compare?park_ids=${encodeURIComponent(parkIds)}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('Comparison API error:', response.status, errorData);
+            throw new Error(`API Error: ${response.status} - ${errorData}`);
+        }
+
         const data = await response.json();
+        console.log('Comparison data received:', data);
 
         displayComparisonResults(data);
         document.getElementById('comparisonResults').style.display = 'block';
         document.getElementById('comparisonResults').scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         console.error('Error comparing parks:', error);
-        showError('Erreur lors de la comparaison');
+        showError('Erreur lors de la comparaison des parcs');
     }
 }
 

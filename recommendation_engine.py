@@ -1,510 +1,775 @@
-#!/usr/bin/env python3
 """
-Eco-Tourism & Safety Recommendation Engine
-Calculates park visit suitability based on weather, health profile, and park characteristics.
+Eco-Tourism Recommendation Engine for Tunisia National Parks
+Advanced suitability scoring and park comparison algorithms
 """
 
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
-from datetime import datetime, timedelta
 import json
 import math
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timedelta
+from dataclasses import dataclass
+
+from models import (
+    SuitabilityScore, ParkComparison, WeatherData,
+    HealthProfileDB, ParkDB, UserDB
+)
+
 
 @dataclass
-class WeatherData:
-    """Weather data structure"""
-    temperature: float
-    humidity: float
-    pressure: float
-    wind_speed: float
-    uv_index: Optional[float] = None
-    pollen_count: Optional[int] = None
-    air_quality_index: Optional[int] = None
+class VisitRecommendation:
+    """Complete visit recommendation with detailed analysis"""
+    park_id: int
+    park_name: str
+    suitability_score: SuitabilityScore
+    weather_data: Optional[WeatherData] = None
+    distance_km: float = 0.0
+    travel_time_minutes: int = 0
+    recommended_activities: List[str] = None
+    safety_notes: List[str] = None
+    alternative_parks: List[dict] = None
 
-@dataclass
-class HealthProfile:
-    """User health profile"""
-    allergies: List[str]
-    pollen_allergy: bool
-    insect_sting_allergy: bool
-    asthma: bool
-    heart_condition: bool
-    high_blood_pressure: bool
-    diabetes: bool
-    mobility_issues: bool
-    physical_stamina: str  # "low", "medium", "high"
-    walking_distance_limit: Optional[int]  # meters
-    preferred_terrain: Optional[str]  # "flat", "hilly", "mountainous"
+    def __post_init__(self):
+        if self.recommended_activities is None:
+            self.recommended_activities = []
+        if self.safety_notes is None:
+            self.safety_notes = []
+        if self.alternative_parks is None:
+            self.alternative_parks = []
 
-@dataclass
-class ParkData:
-    """Park characteristics"""
-    name: str
-    difficulty_level: Optional[str]  # "facile", "modéré", "difficile"
-    elevation_gain: Optional[int]  # meters
-    average_trail_length: Optional[float]  # km
-    has_water_sources: bool
-    has_shade_areas: bool
-    has_emergency_services: bool
 
-@dataclass
-class SuitabilityScore:
-    """Visit suitability result"""
-    can_visit: bool
-    score: float  # 0-100
-    status: str  # "recommended", "caution", "not_recommended"
-    reasons: List[str]
-    safety_tips: List[str]
-    alternative_times: List[str]
+class EcoTourismRecommendationEngine:
+    """
+    Advanced recommendation engine for eco-tourism suitability scoring
+    Considers weather, health, terrain, distance, and biodiversity factors
+    """
 
-class VisitSuitabilityEngine:
-    """Engine for calculating park visit suitability"""
-
-    # Weather thresholds
-    HIGH_HEAT_THRESHOLD = 35.0  # Celsius
-    LOW_HEAT_THRESHOLD = 5.0   # Celsius
-    HIGH_HUMIDITY_THRESHOLD = 80  # %
-    LOW_PRESSURE_THRESHOLD = 1000  # hPa
-    HIGH_WIND_THRESHOLD = 15.0  # m/s
-    HIGH_UV_THRESHOLD = 8
-    HIGH_POLLEN_THRESHOLD = 100
-
-    # Health risk factors
     def __init__(self):
-        self.risk_factors = {
-            "extreme_heat": {
-                "asthma": 0.8,
-                "heart_condition": 0.9,
-                "high_blood_pressure": 0.7,
-                "diabetes": 0.6
-            },
-            "high_humidity": {
-                "asthma": 0.7,
-                "diabetes": 0.5
-            },
-            "low_pressure": {
-                "asthma": 0.6,
-                "heart_condition": 0.8,
-                "high_blood_pressure": 0.7
-            },
-            "high_wind": {
-                "asthma": 0.5,
-                "mobility_issues": 0.6
-            },
-            "extreme_cold": {
-                "heart_condition": 0.8,
-                "high_blood_pressure": 0.7
-            },
-            "high_uv": {
-                "general": 0.3
-            },
-            "high_pollen": {
-                "pollen_allergy": 0.9,
-                "asthma": 0.6
-            }
+        self.weather_weights = {
+            'temperature': 0.25,
+            'humidity': 0.20,
+            'wind_speed': 0.15,
+            'visibility': 0.15,
+            'uv_index': 0.15,
+            'air_quality': 0.10
         }
 
-    def calculate_suitability(
+        self.health_weights = {
+            'asthma': 0.30,
+            'allergies': 0.25,
+            'heart_condition': 0.20,
+            'mobility': 0.15,
+            'stamina': 0.10
+        }
+
+        self.terrain_weights = {
+            'difficulty': 0.40,
+            'elevation': 0.30,
+            'accessibility': 0.20,
+            'trail_length': 0.10
+        }
+
+    def calculate_visit_suitability(
         self,
-        weather: WeatherData,
-        health_profile: HealthProfile,
-        park: ParkData,
-        user_location: Optional[Tuple[float, float]] = None,
-        park_location: Optional[Tuple[float, float]] = None
-    ) -> SuitabilityScore:
+        park: ParkDB,
+        user_health: HealthProfileDB,
+        weather_data: Optional[WeatherData] = None,
+        user_location: Optional[Tuple[float, float]] = None
+    ) -> VisitRecommendation:
         """
-        Calculate visit suitability score
+        Main algorithm for calculating park visit suitability
 
-        Args:
-            weather: Current weather conditions
-            health_profile: User's health profile
-            park: Park characteristics
-            user_location: (lat, lng) of user
-            park_location: (lat, lng) of park
-
-        Returns:
-            SuitabilityScore with recommendations
+        Algorithm considers:
+        1. Weather conditions (25% weight)
+        2. User health profile (30% weight)
+        3. Terrain difficulty (20% weight)
+        4. Distance from user (15% weight)
+        5. Biodiversity/activity match (10% weight)
         """
 
-        reasons = []
-        safety_tips = []
-        alternative_times = []
-        risk_score = 0.0
+        # Calculate individual component scores
+        weather_score, weather_reasons = self._calculate_weather_score(weather_data, user_health)
+        health_score, health_reasons = self._calculate_health_score(user_health, park, weather_data)
+        terrain_score, terrain_reasons = self._calculate_terrain_score(park, user_health)
+        distance_score, distance_km, travel_time = self._calculate_distance_score(park, user_location)
+        activity_score, activity_reasons = self._calculate_activity_score(park, user_health)
 
-        # Weather-based assessments
-        weather_risks = self._assess_weather_risks(weather, health_profile)
-        risk_score += weather_risks["score"]
-        reasons.extend(weather_risks["reasons"])
-        safety_tips.extend(weather_risks["tips"])
-        alternative_times.extend(weather_risks["alternatives"])
-
-        # Physical capability assessment
-        physical_risks = self._assess_physical_risks(park, health_profile)
-        risk_score += physical_risks["score"]
-        reasons.extend(physical_risks["reasons"])
-        safety_tips.extend(physical_risks["tips"])
-
-        # Distance assessment
-        if user_location and park_location:
-            distance_risks = self._assess_distance_risks(user_location, park_location, health_profile)
-            risk_score += distance_risks["score"]
-            reasons.extend(distance_risks["reasons"])
-
-        # Calculate final score (0-100, higher is better)
-        final_score = max(0, 100 - risk_score)
-
-        # Determine status
-        if final_score >= 80:
-            status = "recommended"
-            can_visit = True
-        elif final_score >= 60:
-            status = "caution"
-            can_visit = True
-        else:
-            status = "not_recommended"
-            can_visit = False
-
-        # Add general safety tips
-        safety_tips.extend([
-            "Stay hydrated and drink water regularly",
-            "Wear appropriate clothing and sun protection",
-            "Carry a charged phone and emergency contacts",
-            "Inform someone about your plans",
-            "Know the location of emergency services"
-        ])
-
-        # Remove duplicates
-        reasons = list(set(reasons))
-        safety_tips = list(set(safety_tips))
-        alternative_times = list(set(alternative_times))
-
-        return SuitabilityScore(
-            can_visit=can_visit,
-            score=final_score,
-            status=status,
-            reasons=reasons,
-            safety_tips=safety_tips,
-            alternative_times=alternative_times
+        # Weighted overall score
+        overall_score = (
+            weather_score * 0.25 +
+            health_score * 0.30 +
+            terrain_score * 0.20 +
+            distance_score * 0.15 +
+            activity_score * 0.10
         )
 
-    def _assess_weather_risks(self, weather: WeatherData, health: HealthProfile) -> Dict:
-        """Assess weather-related health risks"""
+        # Determine status based on score
+        if overall_score >= 75:
+            status = "recommended"
+        elif overall_score >= 50:
+            status = "caution"
+        else:
+            status = "not_recommended"
+
+        # Compile all reasons
+        all_reasons = []
+        all_reasons.extend(weather_reasons)
+        all_reasons.extend(health_reasons)
+        all_reasons.extend(terrain_reasons)
+
+        if distance_km > 0:
+            all_reasons.append(f"Distance: {distance_km:.1f} km away")
+
+        all_reasons.extend(activity_reasons)
+
+        # Create suitability score object
+        suitability = SuitabilityScore(
+            score=round(overall_score, 1),
+            status=status,
+            reasons=all_reasons,
+            weather_score=weather_score,
+            health_score=health_score,
+            distance_score=distance_score,
+            terrain_score=terrain_score
+        )
+
+        # Generate recommendations and safety notes
+        recommended_activities = self._generate_activity_recommendations(park, user_health, weather_data)
+        safety_notes = self._generate_safety_notes(park, user_health, weather_data)
+
+        return VisitRecommendation(
+            park_id=park.id,
+            park_name=park.name,
+            suitability_score=suitability,
+            weather_data=weather_data,
+            distance_km=distance_km,
+            travel_time_minutes=travel_time,
+            recommended_activities=recommended_activities,
+            safety_notes=safety_notes
+        )
+
+    def _calculate_weather_score(
+        self,
+        weather: Optional[WeatherData],
+        health: HealthProfileDB
+    ) -> Tuple[float, List[str]]:
+        """Calculate weather suitability score (0-100)"""
+        if not weather:
+            return 70.0, ["Weather data not available - moderate conditions assumed"]
+
         reasons = []
-        tips = []
-        alternatives = []
-        score = 0
+        score = 100.0
 
-        # Temperature risks
-        if weather.temperature > self.HIGH_HEAT_THRESHOLD:
-            score += 30
-            reasons.append("Extreme heat conditions detected")
-            tips.extend([
-                "Avoid outdoor activities during peak heat hours (10 AM - 4 PM)",
-                "Wear light, breathable clothing",
-                "Take frequent breaks in shaded areas"
-            ])
-            alternatives.extend(["Visit early morning or evening", "Choose indoor activities"])
+        # Temperature analysis
+        temp_score = self._score_temperature(weather.temperature, health.asthma or health.heart_condition)
+        score = min(score, temp_score)
+        if temp_score < 80:
+            reasons.append(f"Temperature {weather.temperature}°C may be challenging")
 
-            if health.asthma or health.heart_condition:
-                score += 20
-                reasons.append("High heat particularly dangerous for your health conditions")
+        # Humidity analysis
+        humidity_score = self._score_humidity(weather.humidity, health.asthma or health.allergies)
+        score = min(score, humidity_score)
+        if humidity_score < 80:
+            reasons.append(f"Humidity {weather.humidity}% may affect comfort")
 
-        elif weather.temperature < self.LOW_HEAT_THRESHOLD:
-            score += 20
-            reasons.append("Cold weather conditions")
-            tips.extend([
-                "Dress in warm layers",
-                "Protect extremities from frostbite"
-            ])
+        # Wind speed analysis
+        wind_score = self._score_wind(weather.wind_speed, health.asthma)
+        score = min(score, wind_score)
+        if wind_score < 80:
+            reasons.append(f"Wind speed {weather.wind_speed} m/s may be uncomfortable")
 
-        # Humidity risks
-        if weather.humidity > self.HIGH_HUMIDITY_THRESHOLD:
-            score += 15
-            reasons.append("High humidity levels")
-            if health.asthma:
-                score += 15
-                reasons.append("High humidity may trigger asthma symptoms")
-                tips.append("Carry rescue inhaler and avoid strenuous activities")
+        # Visibility analysis
+        visibility_score = self._score_visibility(weather.visibility)
+        score = min(score, visibility_score)
+        if visibility_score < 80:
+            reasons.append(f"Visibility {weather.visibility} km may limit enjoyment")
 
-        # Pressure risks (particularly important for blood pressure)
-        if weather.pressure < self.LOW_PRESSURE_THRESHOLD:
-            score += 25
-            reasons.append("Low atmospheric pressure")
-            if health.high_blood_pressure or health.heart_condition:
-                score += 20
-                reasons.append("Low pressure may affect cardiovascular health")
-                tips.extend([
-                    "Monitor blood pressure regularly",
-                    "Avoid sudden position changes",
-                    "Take medication as prescribed"
-                ])
+        # UV Index analysis
+        if weather.uv_index and weather.uv_index > 7:
+            score -= 15
+            reasons.append(f"High UV index ({weather.uv_index}) - use sun protection")
 
-        # Wind risks
-        if weather.wind_speed > self.HIGH_WIND_THRESHOLD:
-            score += 10
-            reasons.append("Strong wind conditions")
-            tips.append("Be cautious of falling branches and reduced visibility")
-
-        # UV risks
-        if weather.uv_index and weather.uv_index > self.HIGH_UV_THRESHOLD:
-            score += 15
-            reasons.append("High UV radiation")
-            tips.extend([
-                "Apply high SPF sunscreen",
-                "Wear protective clothing and sunglasses",
-                "Stay in shaded areas during peak sun hours"
-            ])
-
-        # Pollen/Allergy risks
-        if weather.pollen_count and weather.pollen_count > self.HIGH_POLLEN_THRESHOLD:
-            if health.pollen_allergy:
-                score += 40
-                reasons.append("High pollen count - severe allergy risk")
-                tips.extend([
-                    "Take antihistamines before visiting",
-                    "Wear protective mask if available",
-                    "Consider rescheduling if symptoms are severe"
-                ])
-                alternatives.append("Visit during low pollen seasons")
-
-        # Air quality
+        # Air Quality analysis
         if weather.air_quality_index and weather.air_quality_index > 100:
-            score += 20
-            reasons.append("Poor air quality")
-            if health.asthma or health.heart_condition:
-                score += 15
-                tips.extend([
-                    "Wear N95 mask if available",
-                    "Limit outdoor time",
-                    "Monitor respiratory symptoms"
-                ])
+            score -= 20
+            reasons.append(f"Poor air quality (AQI: {weather.air_quality_index})")
 
-        return {
-            "score": score,
-            "reasons": reasons,
-            "tips": tips,
-            "alternatives": alternatives
-        }
+        return round(score, 1), reasons
 
-    def _assess_physical_risks(self, park: ParkData, health: HealthProfile) -> Dict:
-        """Assess physical capability risks"""
+    def _calculate_health_score(
+        self,
+        health: HealthProfileDB,
+        park: ParkDB,
+        weather: Optional[WeatherData]
+    ) -> Tuple[float, List[str]]:
+        """Calculate health compatibility score (0-100)"""
         reasons = []
-        tips = []
-        score = 0
+        score = 100.0
 
-        # Difficulty level assessment
-        if park.difficulty_level == "difficile":
-            score += 20
-            reasons.append("Park has difficult terrain")
-            if health.physical_stamina == "low" or health.mobility_issues:
-                score += 25
-                reasons.append("Terrain difficulty exceeds your physical capabilities")
-                tips.extend([
-                    "Consider easier park alternatives",
-                    "Consult with physician before attempting",
-                    "Bring appropriate mobility aids"
-                ])
+        # Asthma considerations
+        if health.asthma:
+            score -= 20
+            reasons.append("Asthma condition requires caution")
 
-        elif park.difficulty_level == "modéré":
-            score += 10
-            if health.physical_stamina == "low":
-                score += 15
+            if weather and weather.humidity > 70:
+                score -= 15
+                reasons.append("High humidity may trigger asthma symptoms")
 
-        # Elevation assessment
-        if park.elevation_gain and park.elevation_gain > 500:
-            score += 15
-            reasons.append("Significant elevation gain required")
-            if health.heart_condition or health.high_blood_pressure:
-                score += 20
-                reasons.append("Elevation may affect cardiovascular health")
-                tips.extend([
-                    "Ascend slowly to avoid altitude sickness",
-                    "Stop and rest frequently",
-                    "Monitor heart rate and breathing"
-                ])
+            if weather and weather.air_quality_index and weather.air_quality_index > 100:
+                score -= 20
+                reasons.append("Poor air quality may affect breathing")
 
-        # Distance assessment
-        if park.average_trail_length and health.walking_distance_limit:
+        # Allergy considerations
+        if health.pollen_allergy or health.allergies:
+            score -= 15
+            reasons.append("Allergy considerations - check pollen forecasts")
+
+            # Check if park has high pollen seasons
+            if park.best_months:
+                try:
+                    best_months = json.loads(park.best_months)
+                    current_month = datetime.now().month
+                    if current_month in best_months:
+                        score -= 10
+                        reasons.append("Current season may have high pollen counts")
+                except:
+                    pass
+
+        # Heart condition considerations
+        if health.heart_condition:
+            score -= 25
+            reasons.append("Heart condition requires medical clearance")
+
+            if park.elevation_max and park.elevation_max > 2000:
+                score -= 15
+                reasons.append("High elevation may affect heart condition")
+
+        # Mobility considerations
+        if health.mobility_issues:
+            score -= 30
+            reasons.append("Mobility issues - check accessibility")
+
+            if park.difficulty_level in ['difficile']:
+                score -= 20
+                reasons.append("Park terrain may be challenging for mobility")
+
+        # Physical stamina considerations
+        if health.physical_stamina == 'low':
+            score -= 15
+            reasons.append("Low stamina - consider shorter activities")
+
+            if park.area_km2 and park.area_km2 > 50:
+                score -= 10
+                reasons.append("Large park area may require significant walking")
+
+        # Walking distance limit
+        if health.walking_distance_limit:
             max_distance = health.walking_distance_limit / 1000  # Convert to km
-            if park.average_trail_length > max_distance:
-                score += 25
-                reasons.append("Trail length exceeds your walking limit")
-                tips.extend([
-                    "Choose shorter trails or park sections",
-                    "Plan for rest stops and return transportation",
-                    "Consider park shuttle services if available"
-                ])
+            if park.area_km2 and park.area_km2 > max_distance:
+                score -= 20
+                reasons.append(f"Park size exceeds recommended walking limit")
 
-        # Terrain preference
-        if health.preferred_terrain and park.difficulty_level:
-            if health.preferred_terrain == "flat" and park.difficulty_level in ["modéré", "difficile"]:
-                score += 10
-                reasons.append("Terrain type may not match your preferences")
+        return max(0, round(score, 1)), reasons
 
-        return {
-            "score": score,
-            "reasons": reasons,
-            "tips": tips
-        }
-
-    def _assess_distance_risks(self, user_loc: Tuple[float, float],
-                              park_loc: Tuple[float, float],
-                              health: HealthProfile) -> Dict:
-        """Assess travel distance risks"""
+    def _calculate_terrain_score(
+        self,
+        park: ParkDB,
+        health: HealthProfileDB
+    ) -> Tuple[float, List[str]]:
+        """Calculate terrain suitability score (0-100)"""
         reasons = []
-        score = 0
+        score = 100.0
 
-        # Calculate distance (simplified Haversine formula)
-        lat1, lon1 = user_loc
-        lat2, lon2 = park_loc
+        # Difficulty level analysis
+        if park.difficulty_level == 'difficile':
+            score -= 30
+            reasons.append("Difficult terrain - advanced preparation required")
+        elif park.difficulty_level == 'modéré':
+            score -= 15
+            reasons.append("Moderate terrain - good fitness recommended")
+        else:
+            reasons.append("Easy terrain - suitable for most visitors")
+
+        # Elevation analysis
+        if park.elevation_max:
+            if park.elevation_max > 3000:
+                score -= 25
+                reasons.append("Very high elevation - altitude sickness risk")
+            elif park.elevation_max > 2000:
+                score -= 15
+                reasons.append("High elevation - acclimatization recommended")
+            elif park.elevation_max > 1000:
+                score -= 5
+                reasons.append("Moderate elevation")
+
+        # Terrain preference analysis
+        if health.preferred_terrain:
+            if health.preferred_terrain == 'flat' and park.difficulty_level == 'difficile':
+                score -= 20
+                reasons.append("Terrain may not match your preferences")
+            elif health.preferred_terrain == 'mountainous' and park.difficulty_level == 'facile':
+                score -= 5
+                reasons.append("Terrain may be less challenging than preferred")
+
+        # Accessibility considerations
+        if health.mobility_issues and not park.accessibility:
+            score -= 25
+            reasons.append("Limited accessibility information available")
+
+        return max(0, round(score, 1)), reasons
+
+    def _calculate_distance_score(
+        self,
+        park: ParkDB,
+        user_location: Optional[Tuple[float, float]]
+    ) -> Tuple[float, float, int]:
+        """Calculate distance-based score and travel time"""
+        if not user_location:
+            return 70.0, 0.0, 0  # Neutral score when location unknown
+
+        user_lat, user_lng = user_location
+        park_lat, park_lng = park.latitude, park.longitude
+
+        # Calculate distance using Haversine formula
+        distance_km = self._calculate_distance(user_lat, user_lng, park_lat, park_lng)
+
+        # Estimate travel time (rough approximation: 50 km/h average speed)
+        travel_time_minutes = int((distance_km / 50) * 60)
+
+        # Score based on distance (closer is better)
+        if distance_km <= 10:
+            score = 100.0
+        elif distance_km <= 50:
+            score = 90.0
+        elif distance_km <= 100:
+            score = 75.0
+        elif distance_km <= 200:
+            score = 60.0
+        elif distance_km <= 500:
+            score = 40.0
+        else:
+            score = 20.0
+
+        return round(score, 1), distance_km, travel_time_minutes
+
+    def _calculate_activity_score(
+        self,
+        park: ParkDB,
+        health: HealthProfileDB
+    ) -> Tuple[float, List[str]]:
+        """Calculate activity/biodiversity match score"""
+        reasons = []
+        score = 70.0  # Base score
+
+        # Check if park has activities suitable for user's health
+        if park.activities:
+            try:
+                activities = json.loads(park.activities)
+
+                # Count suitable activities
+                suitable_count = 0
+                total_activities = len(activities)
+
+                for activity in activities:
+                    activity_lower = activity.lower()
+
+                    # Check health compatibility
+                    if health.mobility_issues and any(word in activity_lower for word in ['hiking', 'climbing', 'trekking']):
+                        continue  # Skip strenuous activities
+
+                    if health.asthma and 'swimming' in activity_lower:
+                        suitable_count += 1  # Swimming might be good for asthma
+                    elif health.physical_stamina == 'low' and any(word in activity_lower for word in ['bird watching', 'photography', 'picnic']):
+                        suitable_count += 1  # Low-impact activities
+                    elif health.physical_stamina == 'high' and any(word in activity_lower for word in ['hiking', 'climbing']):
+                        suitable_count += 1  # High-impact activities
+                    else:
+                        suitable_count += 0.5  # Partially suitable
+
+                if total_activities > 0:
+                    activity_ratio = suitable_count / total_activities
+                    score = 50 + (activity_ratio * 50)  # 50-100 range
+
+                    if activity_ratio > 0.7:
+                        reasons.append("Excellent activity match for your profile")
+                    elif activity_ratio > 0.4:
+                        reasons.append("Good variety of suitable activities")
+                    else:
+                        reasons.append("Limited activities match your preferences")
+
+            except json.JSONDecodeError:
+                reasons.append("Activity information available")
+
+        return round(score, 1), reasons
+
+    def _calculate_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate distance between two points using Haversine formula"""
+        R = 6371  # Earth's radius in kilometers
 
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
 
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-        distance_km = 6371 * c  # Earth radius in km
 
-        # Distance-based recommendations
-        if distance_km > 100:
-            score += 15
-            reasons.append("Park is located far from your position")
-        elif distance_km > 50:
-            score += 10
-            reasons.append("Moderate distance to park")
+        return R * c
 
-        # Travel time consideration for health conditions
-        if distance_km > 50 and (health.heart_condition or health.mobility_issues):
-            score += 10
-            reasons.append("Long travel distance may be fatiguing")
+    def _score_temperature(self, temp: float, has_respiratory_condition: bool) -> float:
+        """Score temperature suitability"""
+        if has_respiratory_condition:
+            # More restrictive for respiratory conditions
+            if 18 <= temp <= 24:
+                return 100.0
+            elif 15 <= temp <= 27:
+                return 80.0
+            elif 10 <= temp <= 30:
+                return 60.0
+            else:
+                return 30.0
+        else:
+            # Normal range
+            if 15 <= temp <= 28:
+                return 100.0
+            elif 10 <= temp <= 32:
+                return 80.0
+            elif 5 <= temp <= 35:
+                return 60.0
+            else:
+                return 30.0
 
-        return {
-            "score": score,
-            "reasons": reasons
-        }
+    def _score_humidity(self, humidity: int, has_asthma: bool) -> float:
+        """Score humidity suitability"""
+        if has_asthma:
+            if humidity <= 50:
+                return 100.0
+            elif humidity <= 65:
+                return 70.0
+            elif humidity <= 80:
+                return 40.0
+            else:
+                return 20.0
+        else:
+            if humidity <= 70:
+                return 100.0
+            elif humidity <= 80:
+                return 80.0
+            elif humidity <= 90:
+                return 60.0
+            else:
+                return 40.0
 
-    def get_weather_warnings(self, weather: WeatherData) -> List[str]:
-        """Get specific weather warnings"""
-        warnings = []
+    def _score_wind(self, wind_speed: float, has_asthma: bool) -> float:
+        """Score wind speed suitability"""
+        if has_asthma:
+            if wind_speed <= 10:
+                return 100.0
+            elif wind_speed <= 15:
+                return 70.0
+            elif wind_speed <= 20:
+                return 40.0
+            else:
+                return 20.0
+        else:
+            if wind_speed <= 15:
+                return 100.0
+            elif wind_speed <= 25:
+                return 80.0
+            elif wind_speed <= 35:
+                return 60.0
+            else:
+                return 40.0
 
-        if weather.temperature > self.HIGH_HEAT_THRESHOLD:
-            warnings.append("Extreme heat warning: Stay hydrated and avoid peak sun hours")
-        if weather.temperature < self.LOW_HEAT_THRESHOLD:
-            warnings.append("Cold weather warning: Dress warmly and protect extremities")
-        if weather.humidity > self.HIGH_HUMIDITY_THRESHOLD:
-            warnings.append("High humidity warning: May cause discomfort and breathing difficulties")
-        if weather.pressure < self.LOW_PRESSURE_THRESHOLD:
-            warnings.append("Low pressure warning: May affect those with cardiovascular conditions")
-        if weather.wind_speed > self.HIGH_WIND_THRESHOLD:
-            warnings.append("High wind warning: Exercise caution with visibility and stability")
-        if weather.uv_index and weather.uv_index > self.HIGH_UV_THRESHOLD:
-            warnings.append("High UV warning: Use sun protection and limit sun exposure")
-        if weather.pollen_count and weather.pollen_count > self.HIGH_POLLEN_THRESHOLD:
-            warnings.append("High pollen warning: May trigger allergies and respiratory issues")
+    def _score_visibility(self, visibility: float) -> float:
+        """Score visibility suitability"""
+        if visibility >= 10:
+            return 100.0
+        elif visibility >= 5:
+            return 80.0
+        elif visibility >= 2:
+            return 60.0
+        else:
+            return 30.0
 
-        return warnings
+    def _generate_activity_recommendations(
+        self,
+        park: ParkDB,
+        health: HealthProfileDB,
+        weather: Optional[WeatherData]
+    ) -> List[str]:
+        """Generate personalized activity recommendations"""
+        recommendations = []
 
-    def suggest_alternative_parks(self, current_park: ParkData,
-                                all_parks: List[ParkData],
-                                weather: WeatherData,
-                                health: HealthProfile) -> List[ParkData]:
-        """Suggest alternative parks based on conditions"""
-        alternatives = []
+        if not park.activities:
+            return ["Explore at your own pace", "Enjoy nature photography"]
 
+        try:
+            activities = json.loads(park.activities)
+
+            # Filter activities based on health and weather
+            for activity in activities:
+                activity_lower = activity.lower()
+
+                # Skip unsuitable activities for health conditions
+                if health.mobility_issues and any(word in activity_lower for word in ['hiking', 'climbing', 'trekking']):
+                    continue
+
+                if health.asthma and weather and weather.humidity > 80:
+                    if 'swimming' not in activity_lower:  # Swimming might help with humidity
+                        continue
+
+                if health.heart_condition and any(word in activity_lower for word in ['climbing', 'high altitude']):
+                    continue
+
+                # Add suitable activities
+                if health.physical_stamina == 'low':
+                    if any(word in activity_lower for word in ['bird watching', 'photography', 'picnic', 'relaxation']):
+                        recommendations.append(activity)
+                elif health.physical_stamina == 'high':
+                    if any(word in activity_lower for word in ['hiking', 'climbing', 'trekking']):
+                        recommendations.append(activity)
+                else:
+                    recommendations.append(activity)
+
+        except json.JSONDecodeError:
+            recommendations = ["Nature exploration", "Photography", "Relaxation"]
+
+        return recommendations[:5]  # Limit to 5 recommendations
+
+    def _generate_safety_notes(
+        self,
+        park: ParkDB,
+        health: HealthProfileDB,
+        weather: Optional[WeatherData]
+    ) -> List[str]:
+        """Generate personalized safety notes"""
+        notes = []
+
+        # Weather-based notes
+        if weather:
+            if weather.temperature > 30:
+                notes.append("High temperature - stay hydrated and avoid prolonged sun exposure")
+            elif weather.temperature < 10:
+                notes.append("Cold weather - dress warmly and be prepared for temperature changes")
+
+            if weather.humidity > 80:
+                notes.append("High humidity - take breaks in shaded areas")
+
+            if weather.uv_index and weather.uv_index > 6:
+                notes.append("High UV index - use sunscreen and protective clothing")
+
+        # Health-based notes
+        if health.asthma:
+            notes.append("Carry inhaler and avoid triggers like dust or strong odors")
+
+        if health.allergies or health.pollen_allergy:
+            notes.append("Check pollen forecasts and carry antihistamines if needed")
+
+        if health.heart_condition:
+            notes.append("Consult physician before strenuous activities")
+
+        if health.mobility_issues:
+            notes.append("Use accessible paths and take regular breaks")
+
+        if health.diabetes:
+            notes.append("Monitor blood sugar levels and carry snacks/medication")
+
+        # Park-specific notes
+        if park.elevation_max and park.elevation_max > 2000:
+            notes.append("High altitude - watch for altitude sickness symptoms")
+
+        if park.difficulty_level == 'difficile':
+            notes.append("Challenging terrain - experienced guides recommended")
+
+        # Emergency contact reminder
+        notes.append("Save local emergency numbers: Call 190 for medical emergencies")
+
+        return notes
+
+    def compare_parks(
+        self,
+        parks: List[ParkDB],
+        user_health: HealthProfileDB,
+        weather_data: Optional[Dict[int, WeatherData]] = None,
+        user_location: Optional[Tuple[float, float]] = None,
+        sort_by: str = "suitability"
+    ) -> List[ParkComparison]:
+        """
+        Compare multiple parks and rank them by suitability
+
+        Args:
+            parks: List of parks to compare
+            user_health: User's health profile
+            weather_data: Optional dict mapping park_id to weather data
+            user_location: User's current location (lat, lng)
+            sort_by: "suitability", "distance", "rating"
+
+        Returns:
+            Ranked list of park comparisons
+        """
+
+        comparisons = []
+
+        for park in parks:
+            weather = weather_data.get(park.id) if weather_data else None
+            recommendation = self.calculate_visit_suitability(park, user_health, weather, user_location)
+
+            comparison = ParkComparison(
+                park_id=park.id,
+                park_name=park.name,
+                governorate=park.governorate,
+                distance_km=recommendation.distance_km,
+                suitability_score=recommendation.suitability_score.score,
+                status=recommendation.suitability_score.status,
+                weather_conditions=weather.description if weather else "Unknown",
+                terrain_difficulty=park.difficulty_level or "modéré",
+                estimated_travel_time=f"{recommendation.travel_time_minutes} min" if recommendation.travel_time_minutes > 0 else "Unknown"
+            )
+
+            comparisons.append(comparison)
+
+        # Sort by requested criteria
+        if sort_by == "suitability":
+            comparisons.sort(key=lambda x: x.suitability_score, reverse=True)
+        elif sort_by == "distance":
+            comparisons.sort(key=lambda x: x.distance_km)
+        elif sort_by == "rating":
+            # This would need park rating data
+            comparisons.sort(key=lambda x: x.suitability_score, reverse=True)
+
+        # Assign ranks
+        for i, comp in enumerate(comparisons, 1):
+            comp.rank = i
+
+        return comparisons
+
+    def get_personalized_recommendations(
+        self,
+        user: UserDB,
+        all_parks: List[ParkDB],
+        user_health: Optional[HealthProfileDB] = None,
+        user_location: Optional[Tuple[float, float]] = None,
+        limit: int = 5
+    ) -> List[VisitRecommendation]:
+        """
+        Get personalized park recommendations for a user
+
+        Considers:
+        - User's health profile
+        - User's visit history and preferences
+        - Current location and weather
+        - User's activity patterns
+        """
+
+        if not user_health:
+            # Return general recommendations if no health data
+            recommendations = []
+            for park in all_parks[:limit]:
+                basic_score = SuitabilityScore(
+                    score=70.0,
+                    status="caution",
+                    reasons=["Complete health profile for personalized recommendations"]
+                )
+                recommendation = VisitRecommendation(
+                    park_id=park.id,
+                    park_name=park.name,
+                    suitability_score=basic_score
+                )
+                recommendations.append(recommendation)
+            return recommendations
+
+        # Calculate suitability for all parks
+        recommendations = []
         for park in all_parks:
-            if park.name == current_park.name:
-                continue
-
-            # Calculate suitability for this park
-            suitability = self.calculate_suitability(weather, health, park)
-
-            # Include parks with higher suitability scores
-            if suitability.score > 70:
-                alternatives.append((park, suitability.score))
+            recommendation = self.calculate_visit_suitability(park, user_health, None, user_location)
+            recommendations.append(recommendation)
 
         # Sort by suitability score
-        alternatives.sort(key=lambda x: x[1], reverse=True)
+        recommendations.sort(key=lambda x: x.suitability_score.score, reverse=True)
 
-        return [park for park, score in alternatives[:3]]  # Top 3 alternatives
+        return recommendations[:limit]
 
 
 # Global instance for easy access
-visit_engine = VisitSuitabilityEngine()
+recommendation_engine = EcoTourismRecommendationEngine()
 
 
-def calculate_visit_suitability(weather_data: dict, health_profile: dict,
-                              park_data: dict) -> dict:
+def calculate_visit_suitability_score(
+    park: ParkDB,
+    user_health: HealthProfileDB,
+    weather_data: Optional[WeatherData] = None,
+    user_location: Optional[Tuple[float, float]] = None
+) -> VisitRecommendation:
     """
-    Main function to calculate visit suitability
+    Convenience function for calculating visit suitability
 
-    Args:
-        weather_data: Dictionary with weather information
-        health_profile: Dictionary with user health information
-        park_data: Dictionary with park information
+    Returns a comprehensive recommendation with:
+    - Overall suitability score (0-100)
+    - Status (recommended/caution/not_recommended)
+    - Detailed reasons for the score
+    - Personalized activity recommendations
+    - Safety notes
+    - Weather considerations
+    - Distance and travel time estimates
+    """
+    return recommendation_engine.calculate_visit_suitability(
+        park, user_health, weather_data, user_location
+    )
+
+
+def compare_parks_for_user(
+    parks: List[ParkDB],
+    user_health: HealthProfileDB,
+    weather_data: Optional[Dict[int, WeatherData]] = None,
+    user_location: Optional[Tuple[float, float]] = None
+) -> List[ParkComparison]:
+    """
+    Compare multiple parks for a specific user
+
+    Returns ranked comparison with suitability scores,
+    distances, travel times, and recommendations
+    """
+    return recommendation_engine.compare_parks(
+        parks, user_health, weather_data, user_location
+    )
+
+
+def get_can_i_visit_recommendation(
+    park: ParkDB,
+    user_health: HealthProfileDB,
+    weather_data: Optional[WeatherData] = None
+) -> Dict[str, any]:
+    """
+    Simple "Can I Visit?" recommendation function
 
     Returns:
-        Dictionary with suitability assessment
+    {
+        "can_visit": bool,
+        "status": "recommended|caution|not_recommended",
+        "score": float,
+        "reason": str,
+        "safety_notes": [str],
+        "recommended_activities": [str]
+    }
     """
 
-    # Convert dictionaries to data classes
-    weather = WeatherData(**weather_data)
-    health = HealthProfile(**health_profile)
-    park = ParkData(**park_data)
+    recommendation = recommendation_engine.calculate_visit_suitability(
+        park, user_health, weather_data
+    )
 
-    # Calculate suitability
-    result = visit_engine.calculate_suitability(weather, health, park)
-
-    # Return as dictionary
     return {
-        "can_visit": result.can_visit,
-        "suitability_score": result.score,
-        "status": result.status,
-        "risk_reasons": result.reasons,
-        "safety_tips": result.safety_tips,
-        "alternative_times": result.alternative_times,
-        "weather_warnings": visit_engine.get_weather_warnings(weather)
+        "can_visit": recommendation.suitability_score.status in ["recommended", "caution"],
+        "status": recommendation.suitability_score.status,
+        "score": recommendation.suitability_score.score,
+        "reason": "; ".join(recommendation.suitability_score.reasons[:3]),  # Top 3 reasons
+        "safety_notes": recommendation.safety_notes,
+        "recommended_activities": recommendation.recommended_activities
     }
 
 
-if __name__ == "__main__":
-    # Example usage
-    weather = WeatherData(
-        temperature=38.0,
-        humidity=85,
-        pressure=995,
-        wind_speed=8.0,
-        uv_index=9,
-        pollen_count=150
-    )
-
-    health = HealthProfile(
-        allergies=["peanuts", "dust"],
-        pollen_allergy=True,
-        insect_sting_allergy=False,
-        asthma=True,
-        heart_condition=False,
-        high_blood_pressure=True,
-        diabetes=False,
-        mobility_issues=False,
-        physical_stamina="medium",
-        walking_distance_limit=5000,
-        preferred_terrain="flat"
-    )
-
-    park = ParkData(
-        name="Ichkeul National Park",
-        difficulty_level="modéré",
-        elevation_gain=300,
-        average_trail_length=8.0,
-        has_water_sources=True,
-        has_shade_areas=True,
-        has_emergency_services=True
-    )
-
-    result = visit_engine.calculate_suitability(weather, health, park)
-
-    print(f"Can Visit: {result.can_visit}")
-    print(f"Score: {result.score}")
-    print(f"Status: {result.status}")
-    print("Reasons:", result.reasons)
-    print("Safety Tips:", result.safety_tips)
+# Export the main functions
+__all__ = [
+    'calculate_visit_suitability_score',
+    'compare_parks_for_user',
+    'get_can_i_visit_recommendation',
+    'EcoTourismRecommendationEngine',
+    'VisitRecommendation'
+]

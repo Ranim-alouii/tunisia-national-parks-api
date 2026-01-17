@@ -4,7 +4,7 @@
 
 
 from sqlmodel import Session, select, delete
-from database import engine, init_db
+from database import engine, get_engine, init_db
 from models import ParkDB, SpeciesDB, ParkSpeciesLink, TrailDB
 from typing import List, Dict
 
@@ -622,7 +622,7 @@ def seed_complete_database():
     """Seed database with complete park and species information"""
     init_db()
     
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         print("=== TUNISIA NATIONAL PARKS COMPLETE DATABASE SEED ===\n")
         
         # Check existing data

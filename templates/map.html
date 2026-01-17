@@ -1,495 +1,436 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map - Tunisia National Parks</title>
 
-{% block title %}Carte Interactive - Parcs Nationaux de Tunisie{% endblock %}
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
 
-{% block extra_css %}
-<style>
-#map {
-    height: calc(100vh - 80px);
-    width: 100%;
-}
-
-.map-controls {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.map-control-btn {
-    background: white;
-    border: none;
-    padding: 12px;
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-md);
-    cursor: pointer;
-    font-size: 1.25rem;
-    color: var(--primary);
-    transition: var(--transition);
-    width: 50px;
-    height: 50px;
-}
-
-.map-control-btn:hover {
-    background: var(--primary);
-    color: white;
-    transform: scale(1.05);
-}
-
-.map-sidebar {
-    position: absolute;
-    top: 0;
-    left: -400px;
-    width: 400px;
-    height: 100%;
-    background: white;
-    box-shadow: var(--shadow-lg);
-    z-index: 999;
-    transition: left 0.3s ease;
-    overflow-y: auto;
-}
-
-.map-sidebar.active {
-    left: 0;
-}
-
-.park-popup {
-    min-width: 250px;
-}
-
-.park-popup h4 {
-    margin: 0 0 0.5rem 0;
-    color: var(--primary);
-}
-
-.park-popup-meta {
-    display: flex;
-    gap: 1rem;
-    margin: 0.5rem 0;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
-.park-popup-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-}
-
-.distance-info {
-    background: var(--bg-secondary);
-    padding: 0.5rem;
-    border-radius: var(--radius-sm);
-    margin-top: 0.5rem;
-    font-size: 0.875rem;
-}
-
-@media (max-width: 768px) {
-    .map-sidebar {
-        width: 100%;
-        left: -100%;
-    }
-}
-</style>
-{% endblock %}
-
-{% block content %}
-
-<div style="position: relative;">
-    <!-- Map Container -->
-    <div id="map"></div>
-    
-    <!-- Map Controls -->
-    <div class="map-controls">
-        <button class="map-control-btn" onclick="toggleSidebar()" title="Liste des parcs">
-            <i class="fas fa-list"></i>
-        </button>
-        <button class="map-control-btn" onclick="locateMe()" title="Ma position">
-            <i class="fas fa-crosshairs"></i>
-        </button>
-        <button class="map-control-btn" onclick="fitAllParks()" title="Voir tous les parcs">
-            <i class="fas fa-expand"></i>
-        </button>
-        <button class="map-control-btn" onclick="toggleClustering()" title="Grouper les marqueurs">
-            <i class="fas fa-layer-group"></i>
-        </button>
-    </div>
-    
-    <!-- Sidebar -->
-    <div class="map-sidebar" id="mapSidebar">
-        <div style="padding: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h3 style="margin: 0;"><i class="fas fa-mountain"></i> Parcs Nationaux</h3>
-                <button onclick="toggleSidebar()" style="background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <!-- Search -->
-            <div style="margin-bottom: 1rem;">
-                <input type="text" 
-                       id="mapSearch" 
-                       placeholder="Rechercher un parc..."
-                       onkeyup="filterParks(this.value)"
-                       style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
-            </div>
-            
-            <!-- Filter -->
-            <div style="margin-bottom: 1.5rem;">
-                <select id="governorateFilter" 
-                        onchange="filterByGovernorate(this.value)"
-                        style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
-                    <option value="">Tous les gouvernorats</option>
-                </select>
-            </div>
-            
-            <!-- Parks List -->
-            <div id="parksList">
-                <!-- Will be populated dynamically -->
-            </div>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block extra_js %}
-<script>
-let map;
-let markers = [];
-let allParks = [];
-let userLocation = null;
-let clusteringEnabled = false;
-let markerClusterGroup = null;
-
-// Initialize map
-async function initMap() {
-    // Create map centered on Tunisia
-    map = L.map('map').setView([34.0, 9.5], 7);
-    
-    // Add tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19
-    }).addTo(map);
-    
-    // Load parks
-    await loadParks();
-    
-    // Try to get user location
-    tryGetUserLocation();
-}
-
-// Load all parks
-async function loadParks() {
-    try {
-        const response = await fetch('/api/parks');
-        allParks = await response.json();
-        
-        // Populate governorate filter
-        populateGovernorateFilter();
-        
-        // Add markers
-        addMarkers(allParks);
-        
-        // Populate sidebar list
-        populateParksList(allParks);
-        
-    } catch (error) {
-        console.error('Error loading parks:', error);
-        appUtils.showNotification('Erreur lors du chargement des parcs', 'error');
-    }
-}
-
-// Add markers to map
-function addMarkers(parks) {
-    // Clear existing markers
-    markers.forEach(marker => map.removeLayer(marker));
-    markers = [];
-    
-    parks.forEach(park => {
-        // Custom icon
-        const icon = L.divIcon({
-            html: `<div style="background: var(--primary); color: white; width: 40px; height: 40px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);">
-                <i class="fas fa-tree" style="transform: rotate(45deg); font-size: 1.25rem;"></i>
-            </div>`,
-            className: 'custom-marker',
-            iconSize: [40, 40],
-            iconAnchor: [20, 40]
-        });
-        
-        // Create marker
-        const marker = L.marker([park.latitude, park.longitude], { icon })
-            .bindPopup(createPopupContent(park), {
-                maxWidth: 300,
-                className: 'park-popup'
-            });
-        
-        marker.parkData = park;
-        markers.push(marker);
-        marker.addTo(map);
-        
-        // Add click event
-        marker.on('click', () => {
-            highlightParkInList(park.id);
-        });
-    });
-}
-
-// Create popup content
-function createPopupContent(park) {
-    const distance = userLocation 
-        ? appUtils.calculateDistance(
-            userLocation.lat, 
-            userLocation.lng, 
-            park.latitude, 
-            park.longitude
-        ).toFixed(1)
-        : null;
-    
-    return `
-        <div class="park-popup">
-            <h4>${park.name}</h4>
-            <div class="park-popup-meta">
-                <span><i class="fas fa-map-marker-alt"></i> ${park.governorate}</span>
-                <span><i class="fas fa-ruler-combined"></i> ${park.area_km2} km²</span>
-            </div>
-            ${distance ? `
-                <div class="distance-info">
-                    <i class="fas fa-route"></i> À ${distance} km de votre position
-                </div>
-            ` : ''}
-            <p style="margin: 0.75rem 0; color: var(--text-secondary); font-size: 0.875rem;">
-                ${park.description.substring(0, 100)}...
-            </p>
-            <div class="park-popup-actions">
-                <button onclick="goToPark(${park.id})" class="btn btn-primary btn-sm">
-                    <i class="fas fa-eye"></i> Voir
-                </button>
-                <button onclick="getDirectionsToPark(${park.latitude}, ${park.longitude})" class="btn btn-outline btn-sm">
-                    <i class="fas fa-directions"></i> Itinéraire
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-// Populate governorate filter
-function populateGovernorateFilter() {
-    const governorates = [...new Set(allParks.map(p => p.governorate))].sort();
-    const select = document.getElementById('governorateFilter');
-    
-    governorates.forEach(gov => {
-        const option = document.createElement('option');
-        option.value = gov;
-        option.textContent = gov;
-        select.appendChild(option);
-    });
-}
-
-// Populate parks list in sidebar
-function populateParksList(parks) {
-    const container = document.getElementById('parksList');
-    
-    if (parks.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Aucun parc trouvé</p>';
-        return;
-    }
-    
-    container.innerHTML = parks.map(park => {
-        const distance = userLocation 
-            ? appUtils.calculateDistance(
-                userLocation.lat, 
-                userLocation.lng, 
-                park.latitude, 
-                park.longitude
-            ).toFixed(1)
-            : null;
-        
-        return `
-            <div class="card hover-lift" 
-                 id="park-list-${park.id}"
-                 onclick="focusPark(${park.id})" 
-                 style="margin-bottom: 1rem; cursor: pointer;">
-                <div class="card-content">
-                    <h4 style="margin-bottom: 0.5rem;">${park.name}</h4>
-                    <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                        <i class="fas fa-map-marker-alt"></i> ${park.governorate}
-                        ${distance ? `<span style="margin-left: 0.5rem;"><i class="fas fa-route"></i> ${distance} km</span>` : ''}
-                    </p>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button onclick="event.stopPropagation(); goToPark(${park.id})" class="btn btn-primary btn-sm">
-                            Voir
-                        </button>
-                        <button onclick="event.stopPropagation(); getDirectionsToPark(${park.latitude}, ${park.longitude})" class="btn btn-outline btn-sm">
-                            <i class="fas fa-directions"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Focus on a specific park
-function focusPark(parkId) {
-    const park = allParks.find(p => p.id === parkId);
-    if (!park) return;
-    
-    map.setView([park.latitude, park.longitude], 12);
-    
-    // Find and open marker popup
-    const marker = markers.find(m => m.parkData.id === parkId);
-    if (marker) {
-        marker.openPopup();
-    }
-}
-
-// Highlight park in list
-function highlightParkInList(parkId) {
-    // Remove previous highlights
-    document.querySelectorAll('[id^="park-list-"]').forEach(el => {
-        el.style.borderLeft = 'none';
-    });
-    
-    // Highlight selected
-    const element = document.getElementById(`park-list-${parkId}`);
-    if (element) {
-        element.style.borderLeft = '4px solid var(--primary)';
-        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-}
-
-// Filter parks by search
-function filterParks(searchTerm) {
-    const filtered = allParks.filter(park => 
-        park.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        park.governorate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        park.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    addMarkers(filtered);
-    populateParksList(filtered);
-}
-
-// Filter by governorate
-function filterByGovernorate(governorate) {
-    const filtered = governorate 
-        ? allParks.filter(p => p.governorate === governorate)
-        : allParks;
-    
-    addMarkers(filtered);
-    populateParksList(filtered);
-    
-    // Fit bounds to filtered parks
-    if (filtered.length > 0) {
-        const bounds = L.latLngBounds(filtered.map(p => [p.latitude, p.longitude]));
-        map.fitBounds(bounds, { padding: [50, 50] });
-    }
-}
-
-// Toggle sidebar
-function toggleSidebar() {
-    document.getElementById('mapSidebar').classList.toggle('active');
-}
-
-// Fit all parks
-function fitAllParks() {
-    if (markers.length > 0) {
-        const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
-        map.fitBounds(bounds, { padding: [50, 50] });
-    }
-}
-
-// Locate user
-async function locateMe() {
-    try {
-        const location = await appUtils.getCurrentLocation();
-        userLocation = location;
-        
-        // Add user marker
-        if (window.userMarker) {
-            map.removeLayer(window.userMarker);
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--bg-color);
+            color: var(--text-color);
         }
-        
-        const userIcon = L.divIcon({
-            html: '<div style="background: #4895ef; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: var(--shadow-md);"><i class="fas fa-user"></i></div>',
-            className: 'user-marker',
-            iconSize: [30, 30]
+
+        .navbar {
+            background: var(--primary);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        #map {
+            height: 600px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+        }
+
+        .map-controls {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+        }
+
+        .park-popup {
+            max-width: 250px;
+        }
+
+        .park-popup h3 {
+            margin: 0 0 8px 0;
+            color: var(--primary);
+        }
+
+        .park-popup p {
+            margin: 4px 0;
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .control-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            #map {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <h1>🗺️ Tunisia National Parks - Interactive Map</h1>
+    </nav>
+
+    <div class="container">
+        <!-- Map Controls -->
+        <div class="map-controls">
+            <div class="control-group">
+                <div class="control-item">
+                    <label for="governorate-filter">🏛️ Filter by Governorate:</label>
+                    <select id="governorate-filter">
+                        <option value="">All Governorates</option>
+                    </select>
+                </div>
+
+                <div class="control-item">
+                    <label for="difficulty-filter">🏔️ Filter by Difficulty:</label>
+                    <select id="difficulty-filter">
+                        <option value="">All Levels</option>
+                        <option value="facile">Easy (Facile)</option>
+                        <option value="modéré">Moderate (Modéré)</option>
+                        <option value="difficile">Difficult (Difficile)</option>
+                    </select>
+                </div>
+
+                <div class="control-item">
+                    <button id="reset-filters" class="btn btn-outline">🔄 Reset Filters</button>
+                </div>
+
+                <div class="control-item">
+                    <button id="locate-me" class="btn btn-primary">📍 Find My Location</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Container -->
+        <div id="map">
+            <div class="loading">
+                <div>🗺️ Loading interactive map...</div>
+                <div style="margin-top: 10px;">Fetching park locations...</div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <h3>📊 Map Legend</h3>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #2563eb;"></div>
+                <span>National Parks</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #16a34a;"></div>
+                <span>Easy Access (Facile)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ca8a04;"></div>
+                <span>Moderate (Modéré)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #dc2626;"></div>
+                <span>Difficult (Difficile)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <!-- Custom JavaScript -->
+    <script>
+        // Global variables
+        let map;
+        let allParks = [];
+        let parkMarkers = [];
+        let userMarker = null;
+
+        // Initialize map when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMap();
+            loadParksData();
+            setupEventListeners();
         });
-        
-        window.userMarker = L.marker([location.lat, location.lng], { icon: userIcon })
-            .bindPopup('Vous êtes ici')
-            .addTo(map);
-        
-        map.setView([location.lat, location.lng], 9);
-        
-        // Update popups with distances
-        markers.forEach(marker => {
-            marker.setPopupContent(createPopupContent(marker.parkData));
+
+        function initializeMap() {
+            // Create map centered on Tunisia
+            map = L.map('map').setView([34.0, 9.0], 7);
+
+            // Add OpenStreetMap tiles (completely free!)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 18,
+            }).addTo(map);
+
+            // Add scale control
+            L.control.scale().addTo(map);
+
+            console.log('🗺️ Map initialized successfully');
+        }
+
+        async function loadParksData() {
+            try {
+                console.log('📡 Fetching parks data...');
+                const response = await fetch('/api/parks');
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const parks = await response.json();
+                allParks = parks;
+
+                console.log(`✅ Loaded ${parks.length} parks`);
+                displayParksOnMap(parks);
+                populateGovernorateFilter(parks);
+
+            } catch (error) {
+                console.error('❌ Error loading parks:', error);
+                showError('Failed to load park data. Please refresh the page.');
+            }
+        }
+
+        function displayParksOnMap(parks) {
+            // Clear existing markers
+            parkMarkers.forEach(marker => map.removeLayer(marker));
+            parkMarkers = [];
+
+            parks.forEach(park => {
+                // Choose marker color based on difficulty
+                let markerColor = '#2563eb'; // Default blue
+
+                if (park.difficulty_level === 'facile') {
+                    markerColor = '#16a34a'; // Green
+                } else if (park.difficulty_level === 'modéré') {
+                    markerColor = '#ca8a04'; // Yellow
+                } else if (park.difficulty_level === 'difficile') {
+                    markerColor = '#dc2626'; // Red
+                }
+
+                // Create custom marker
+                const markerHtml = `<div style="background-color: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`;
+                const customIcon = L.divIcon({
+                    html: markerHtml,
+                    className: 'custom-park-marker',
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
+                });
+
+                // Create popup content
+                const popupContent = `
+                    <div class="park-popup">
+                        <h3>${park.name}</h3>
+                        <p><strong>Governorate:</strong> ${park.governorate}</p>
+                        <p><strong>Area:</strong> ${park.area_km2} km²</p>
+                        ${park.description ? `<p>${park.description.substring(0, 150)}${park.description.length > 150 ? '...' : ''}</p>` : ''}
+                        <p style="margin-top: 10px;">
+                            <a href="/parks/${park.id}" style="color: var(--primary); text-decoration: none; font-weight: bold;">
+                                View Details →
+                            </a>
+                        </p>
+                    </div>
+                `;
+
+                // Create marker
+                const marker = L.marker([park.latitude, park.longitude], {
+                    icon: customIcon
+                })
+                .addTo(map)
+                .bindPopup(popupContent);
+
+                parkMarkers.push(marker);
+            });
+
+            // Fit map to show all markers
+            if (parkMarkers.length > 0) {
+                const group = new L.featureGroup(parkMarkers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+
+            console.log(`📍 Added ${parkMarkers.length} park markers to map`);
+        }
+
+        function populateGovernorateFilter(parks) {
+            const filter = document.getElementById('governorate-filter');
+            const governorates = [...new Set(parks.map(park => park.governorate))].sort();
+
+            governorates.forEach(gov => {
+                const option = document.createElement('option');
+                option.value = gov;
+                option.textContent = gov;
+                filter.appendChild(option);
+            });
+        }
+
+        function setupEventListeners() {
+            // Governorate filter
+            document.getElementById('governorate-filter').addEventListener('change', applyFilters);
+
+            // Difficulty filter
+            document.getElementById('difficulty-filter').addEventListener('change', applyFilters);
+
+            // Reset filters
+            document.getElementById('reset-filters').addEventListener('click', resetFilters);
+
+            // Locate user
+            document.getElementById('locate-me').addEventListener('click', locateUser);
+        }
+
+        function applyFilters() {
+            const governorateFilter = document.getElementById('governorate-filter').value;
+            const difficultyFilter = document.getElementById('difficulty-filter').value;
+
+            let filteredParks = allParks;
+
+            if (governorateFilter) {
+                filteredParks = filteredParks.filter(park => park.governorate === governorateFilter);
+            }
+
+            if (difficultyFilter) {
+                filteredParks = filteredParks.filter(park => park.difficulty_level === difficultyFilter);
+            }
+
+            displayParksOnMap(filteredParks);
+        }
+
+        function resetFilters() {
+            document.getElementById('governorate-filter').value = '';
+            document.getElementById('difficulty-filter').value = '';
+            displayParksOnMap(allParks);
+        }
+
+        function locateUser() {
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser');
+                return;
+            }
+
+            document.getElementById('locate-me').textContent = '📍 Locating...';
+            document.getElementById('locate-me').disabled = true;
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    // Remove existing user marker
+                    if (userMarker) {
+                        map.removeLayer(userMarker);
+                    }
+
+                    // Add user location marker
+                    userMarker = L.marker([lat, lng], {
+                        icon: L.divIcon({
+                            html: '<div style="background-color: #ef4444; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                            className: 'user-location-marker',
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        })
+                    })
+                    .addTo(map)
+                    .bindPopup('📍 Your Location');
+
+                    // Center map on user location
+                    map.setView([lat, lng], 10);
+
+                    document.getElementById('locate-me').textContent = '📍 Location Found!';
+                    setTimeout(() => {
+                        document.getElementById('locate-me').textContent = '📍 Find My Location';
+                        document.getElementById('locate-me').disabled = false;
+                    }, 2000);
+
+                    console.log('📍 User location found and displayed on map');
+                },
+                function(error) {
+                    console.error('Error getting location:', error);
+                    alert('Unable to get your location. Please check your browser permissions.');
+                    document.getElementById('locate-me').textContent = '📍 Find My Location';
+                    document.getElementById('locate-me').disabled = false;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000
+                }
+            );
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = `⚠️ ${message}`;
+            document.querySelector('.container').insertBefore(errorDiv, document.getElementById('map'));
+        }
+
+        // Handle map loading errors
+        map.on('error', function(e) {
+            console.error('Map error:', e);
+            showError('Error loading map tiles. Please check your internet connection.');
         });
-        
-        // Update list
-        populateParksList(allParks);
-        
-        appUtils.showNotification('Position trouvée!', 'success');
-        
-    } catch (error) {
-        console.error('Geolocation error:', error);
-        appUtils.showNotification('Impossible d\'obtenir votre position', 'error');
-    }
-}
-
-// Try to get user location on load
-function tryGetUserLocation() {
-    navigator.geolocation?.getCurrentPosition(
-        position => {
-            userLocation = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-            };
-            populateParksList(allParks);
-        },
-        () => {} // Fail silently
-    );
-}
-
-// Toggle clustering
-function toggleClustering() {
-    clusteringEnabled = !clusteringEnabled;
-    
-    if (clusteringEnabled) {
-        appUtils.showNotification('Clustering activé', 'info');
-        // Note: Requires leaflet.markercluster plugin
-    } else {
-        appUtils.showNotification('Clustering désactivé', 'info');
-    }
-}
-
-// Navigate to park page
-function goToPark(parkId) {
-    window.location.href = `/parks/${parkId}`;
-}
-
-// Get directions
-function getDirectionsToPark(lat, lng) {
-    if (userLocation) {
-        window.open(
-            `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${lat},${lng}`,
-            '_blank'
-        );
-    } else {
-        window.open(
-            `https://www.google.com/maps?q=${lat},${lng}`,
-            '_blank'
-        );
-    }
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', initMap);
-</script>
-{% endblock %}
+    </script>
+</body>
+</html>

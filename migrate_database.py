@@ -5,7 +5,7 @@ Run: python migrate_database.py
 
 from sqlmodel import SQLModel, Session, create_engine, select
 from models import *
-from database import engine
+from database import, get_engine engine
 import json
 
 def migrate_database():
@@ -121,7 +121,7 @@ def migrate_database():
     SQLModel.metadata.create_all(engine)
     print("✅ New tables created\n")
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         # Add sample data for new features
         
         # 1. Update existing parks with new fields

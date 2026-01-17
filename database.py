@@ -10,7 +10,6 @@ def get_engine():
     """Get the appropriate engine (test or production)."""
     # Check if we're in testing mode
     try:
-        from fastapi import Request
         # This is a bit of a hack, but we need to access the app state
         # In tests, the app will have test_engine set
         import main

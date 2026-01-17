@@ -1,24 +1,5 @@
-// Enhanced Navigation with Dropdowns and Accessibility - Modular Version
-
-// Load modules dynamically
-Promise.all([
-    import('./modules/api.js'),
-    import('./modules/ui.js')
-]).then(([apiModule, uiModule]) => {
-    console.log('Navigation modules loaded successfully');
-
-    // Initialize navigation when DOM is ready and modules are loaded
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeNavigation);
-    } else {
-        initializeNavigation();
-    }
-
-}).catch(error => {
-    console.error('Failed to load navigation modules:', error);
-    // Fallback to basic functionality
-    document.addEventListener('DOMContentLoaded', initializeNavigation);
-});
+// Enhanced Navigation with Dropdowns and Accessibility
+console.log('Enhanced navigation loaded');
 
 function initializeNavigation() {
     // Mobile menu toggle
@@ -230,4 +211,11 @@ function initializeNavigation() {
     window.showLoading = showLoading;
     window.hideLoading = hideLoading;
     window.trapFocus = trapFocus;
+}
+
+// Initialize navigation when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeNavigation);
+} else {
+    initializeNavigation();
 }

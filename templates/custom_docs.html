@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Tunisia National Parks API - Interactive Documentation" />
+
+    <!-- Custom Title and Favicon -->
+    <title>🌿 Tunisia Parks API - Documentation</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+
+    <!-- Custom CSS for Enhanced UI/UX -->
+    <style>
+        /* Override default Swagger UI styles */
+        .swagger-ui .topbar {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+            border-bottom: 4px solid #1e40af;
+        }
+
+        .swagger-ui .topbar .link {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 8px 16px;
+            color: white !important;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .swagger-ui .topbar .link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .swagger-ui .info .title {
+            color: #2563eb !important;
+            font-size: 2.5em !important;
+            font-weight: 800 !important;
+            text-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
+        }
+
+        .swagger-ui .info .description {
+            font-size: 1.1em !important;
+            line-height: 1.6 !important;
+            color: #374151 !important;
+            margin: 20px 0 !important;
+        }
+
+        /* Enhanced operation tags */
+        .swagger-ui .opblock-tag {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            margin: 8px 0 !important;
+            padding: 12px 16px !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .swagger-ui .opblock-tag:hover {
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0) !important;
+            transform: translateX(4px) !important;
+        }
+
+        .swagger-ui .opblock-tag span {
+            font-weight: 700 !important;
+            font-size: 1.1em !important;
+            color: #2563eb !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+        }
+
+        /* Enhanced method badges */
+        .swagger-ui .opblock .opblock-summary-method {
+            border-radius: 4px 0 0 4px !important;
+            font-weight: 700 !important;
+            font-size: 0.9em !important;
+        }
+
+        .swagger-ui .opblock-get .opblock-summary-method {
+            background: #10b981 !important;
+        }
+
+        .swagger-ui .opblock-post .opblock-summary-method {
+            background: #f59e0b !important;
+        }
+
+        .swagger-ui .opblock-put .opblock-summary-method {
+            background: #3b82f6 !important;
+        }
+
+        .swagger-ui .opblock-delete .opblock-summary-method {
+            background: #ef4444 !important;
+        }
+
+        /* Enhanced operation summary */
+        .swagger-ui .opblock .opblock-summary {
+            background: #ffffff !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 8px !important;
+            padding: 12px 16px !important;
+            margin: 8px 0 !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .swagger-ui .opblock .opblock-summary:hover {
+            background: #f9fafb !important;
+            border-color: #d1d5db !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .swagger-ui .opblock-summary-path {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+            font-weight: 600 !important;
+            color: #374151 !important;
+        }
+
+        .swagger-ui .opblock-summary-description {
+            color: #6b7280 !important;
+            font-style: italic !important;
+        }
+
+        /* Enhanced response examples */
+        .swagger-ui .responses-inner {
+            background: #f8fafc !important;
+            border-radius: 8px !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+
+        .swagger-ui .response {
+            background: white !important;
+            border-radius: 6px !important;
+            margin: 8px !important;
+            border: 1px solid #e5e7eb !important;
+        }
+
+        /* Custom header */
+        .custom-header {
+            background: linear-gradient(135deg, #1e40af, #1e3a8a);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .custom-header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 800;
+        }
+
+        .custom-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        /* Quick navigation */
+        .quick-nav {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .quick-nav h3 {
+            color: #2563eb;
+            margin-top: 0;
+        }
+
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .nav-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            text-decoration: none;
+            color: #374151;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-item:hover {
+            background: #2563eb;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(37, 99, 235, 0.2);
+        }
+
+        .nav-item i {
+            font-size: 1.2em;
+        }
+
+        /* Loading animation */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #2563eb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Enhanced code blocks */
+        .swagger-ui .highlight-code {
+            background: #1f2937 !important;
+            border-radius: 8px !important;
+        }
+
+        .swagger-ui .highlight-code .copy-to-clipboard {
+            background: #374151 !important;
+            border-radius: 4px !important;
+        }
+
+        /* Status badges */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-operational {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-beta {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Hide loading overlay after page load */
+        .swagger-ui .loading-overlay {
+            display: none !important;
+        }
+
+        /* Custom footer */
+        .custom-footer {
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
+            padding: 20px;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .custom-footer p {
+            color: #6b7280;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Header -->
+    <div class="custom-header">
+        <h1>🌿 Tunisia National Parks API</h1>
+        <p>Interactive API Documentation - Explore Tunisia's Natural Heritage</p>
+        <div style="margin-top: 16px;">
+            <span class="status-badge status-operational">✓ Operational</span>
+            <span class="status-badge status-beta" style="margin-left: 8px;">β Version 3.0.0</span>
+        </div>
+    </div>
+
+    <!-- Quick Navigation -->
+    <div class="quick-nav">
+        <h3>🚀 Quick Start</h3>
+        <div class="nav-grid">
+            <a href="#/default/get_api_parks" class="nav-item" onclick="scrollToOperation('get_api_parks')">
+                <i class="fas fa-tree"></i>
+                <div>
+                    <strong>Parks</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Browse national parks</div>
+                </div>
+            </a>
+            <a href="#/default/get_api_species" class="nav-item" onclick="scrollToOperation('get_api_species')">
+                <i class="fas fa-paw"></i>
+                <div>
+                    <strong>Species</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Wildlife & plants</div>
+                </div>
+            </a>
+            <a href="#/Weather/get_api_parks__park_id__weather" class="nav-item" onclick="scrollToOperation('get_api_parks__park_id__weather')">
+                <i class="fas fa-cloud-sun"></i>
+                <div>
+                    <strong>Weather</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Current forecasts</div>
+                </div>
+            </a>
+            <a href="#/Maps & Navigation/get_api_parks__park_id__map" class="nav-item" onclick="scrollToOperation('get_api_parks__park_id__map')">
+                <i class="fas fa-map-marked-alt"></i>
+                <div>
+                    <strong>Maps</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Interactive mapping</div>
+                </div>
+            </a>
+            <a href="#/Public APIs/get_api_parks__park_id__unsplash-images" class="nav-item" onclick="scrollToOperation('get_api_parks__park_id__unsplash-images')">
+                <i class="fas fa-camera"></i>
+                <div>
+                    <strong>Images</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Nature photography</div>
+                </div>
+            </a>
+            <a href="#/Search/get_api_search_parks" class="nav-item" onclick="scrollToOperation('get_api_search_parks')">
+                <i class="fas fa-search"></i>
+                <div>
+                    <strong>Search</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Advanced discovery</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Swagger UI will be inserted here -->
+    <div id="swagger-ui"></div>
+
+    <!-- Custom Footer -->
+    <div class="custom-footer">
+        <p>
+            🌿 <strong>Tunisia National Parks API</strong> |
+            Built with <span style="color: #ef4444;">♥</span> for nature conservation |
+            <a href="/" style="color: #2563eb; text-decoration: none;">← Back to Website</a>
+        </p>
+    </div>
+
+    <!-- Load Swagger UI -->
+    <script src="https://unpkg.com/swagger-ui-dist@5.7.2/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5.7.2/swagger-ui-standalone-preset.js"></script>
+
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        // Hide loading overlay when page is ready
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }, 500);
+        });
+
+        // Initialize Swagger UI with custom configuration
+        window.onload = function() {
+            const ui = SwaggerUIBundle({
+                url: '/openapi.json',
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout",
+                validatorUrl: null,
+                tryItOutEnabled: true,
+                requestInterceptor: function(request) {
+                    // Add any custom headers if needed
+                    return request;
+                },
+                responseInterceptor: function(response) {
+                    // Log successful API calls for demo purposes
+                    if (response.status === 200) {
+                        console.log('✅ API call successful:', response.url);
+                    }
+                    return response;
+                },
+                onComplete: function() {
+                    // Custom initialization after Swagger UI loads
+                    console.log('🌿 Tunisia Parks API Documentation loaded successfully!');
+
+                    // Add custom event listeners
+                    addCustomEnhancements();
+                }
+            });
+
+            window.ui = ui;
+        };
+
+        function scrollToOperation(operationId) {
+            // Find and scroll to the specific operation
+            const operationElement = document.querySelector(`[id*="${operationId}"]`);
+            if (operationElement) {
+                operationElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                // Add a temporary highlight
+                operationElement.style.transition = 'background-color 0.3s ease';
+                operationElement.style.backgroundColor = '#fef3c7';
+                setTimeout(function() {
+                    operationElement.style.backgroundColor = '';
+                }, 2000);
+            }
+        }
+
+        function addCustomEnhancements() {
+            // Add tooltips to method badges
+            const methodElements = document.querySelectorAll('.opblock-summary-method');
+            methodElements.forEach(function(el) {
+                const method = el.textContent.trim();
+                let tooltip = '';
+
+                switch(method) {
+                    case 'GET':
+                        tooltip = 'Retrieve data from the server';
+                        break;
+                    case 'POST':
+                        tooltip = 'Create new resources on the server';
+                        break;
+                    case 'PUT':
+                        tooltip = 'Update existing resources';
+                        break;
+                    case 'DELETE':
+                        tooltip = 'Remove resources from the server';
+                        break;
+                }
+
+                if (tooltip) {
+                    el.title = tooltip;
+                }
+            });
+
+            // Add click tracking for demo purposes
+            const operationElements = document.querySelectorAll('.opblock-summary');
+            operationElements.forEach(function(el) {
+                el.addEventListener('click', function() {
+                    const path = el.querySelector('.opblock-summary-path');
+                    if (path) {
+                        console.log('📋 Exploring API endpoint:', path.textContent.trim());
+                    }
+                });
+            });
+
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Ctrl/Cmd + K to focus search
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    const searchInput = document.querySelector('.swagger-ui .search input');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }
+
+                // Ctrl/Cmd + / to toggle all operations
+                if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+                    e.preventDefault();
+                    const tagElements = document.querySelectorAll('.opblock-tag');
+                    tagElements.forEach(function(tag) {
+                        const section = tag.nextElementSibling;
+                        if (section && section.style.display !== 'none') {
+                            tag.click(); // Toggle
+                        }
+                    });
+                }
+            });
+
+            // Add a floating help button
+            const helpButton = document.createElement('div');
+            helpButton.innerHTML = `
+                <div style="
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: #2563eb;
+                    color: white;
+                    border-radius: 50%;
+                    width: 50px;
+                    height: 50px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                    z-index: 1000;
+                    transition: all 0.3s ease;
+                " title="Keyboard Shortcuts: Ctrl+K (search), Ctrl+/ (toggle all)">
+                    <i class="fas fa-question"></i>
+                </div>
+            `;
+
+            helpButton.onclick = function() {
+                alert(`🌟 API Documentation Shortcuts:
+
+• Ctrl+K (or Cmd+K): Focus search bar
+• Ctrl+/ (or Cmd+/): Toggle all sections
+• Click any endpoint to explore
+• Use "Try it out" to test live APIs
+
+🌿 Tunisia Parks API v3.0.0`);
+            };
+
+            document.body.appendChild(helpButton);
+
+            // Add hover effects to help button
+            helpButton.onmouseover = function() {
+                this.style.transform = 'scale(1.1)';
+            };
+            helpButton.onmouseout = function() {
+                this.style.transform = 'scale(1)';
+            };
+        }
+
+        // Add some custom CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .fade-in-up {
+                animation: fadeInUp 0.6s ease-out;
+            }
+
+            .swagger-ui .opblock {
+                animation: fadeInUp 0.4s ease-out;
+                animation-fill-mode: both;
+            }
+
+            .swagger-ui .opblock:nth-child(1) { animation-delay: 0.1s; }
+            .swagger-ui .opblock:nth-child(2) { animation-delay: 0.2s; }
+            .swagger-ui .opblock:nth-child(3) { animation-delay: 0.3s; }
+            .swagger-ui .opblock:nth-child(4) { animation-delay: 0.4s; }
+            .swagger-ui .opblock:nth-child(5) { animation-delay: 0.5s; }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

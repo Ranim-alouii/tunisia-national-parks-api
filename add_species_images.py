@@ -4,7 +4,7 @@
 
 
 from sqlmodel import Session, select
-from database import engine
+from database import, get_engine engine
 from models import SpeciesDB
 
 # Image URLs for species (using placeholder service - replace with real images)
@@ -79,7 +79,7 @@ SPECIES_IMAGES = {
 def add_species_images():
     """Add image URLs to all species"""
     
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         print("=== ADDING IMAGES TO SPECIES ===\n")
         
         all_species = session.exec(select(SpeciesDB)).all()

@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from datetime import datetime, timezone
 from models import UserDB, ParkDB
-from database import engine
+from database import get_engine
 from config import settings
 from utils import get_password_hash, verify_password, create_access_token, get_file_url
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # ---------- AUTH MODELS ----------
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class Token(BaseModel):
     access_token: str
@@ -32,10 +32,10 @@ class UserInDB(User):
     hashed_password: str
 
 class UserCreate(BaseModel):
-    username: str
-    email: str
-    password: str
-    full_name: str | None = None
+    username: str = Field(min_length=3, max_length=50)
+    email: str = Field(pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    password: str = Field(min_length=8)
+    full_name: str | None = Field(default=None, max_length=255)
 
 class UserLogin(BaseModel):
     username: str
@@ -45,7 +45,7 @@ class UserLogin(BaseModel):
 
 def get_user(username: str) -> UserInDB | None:
     """Get user from database."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         user_db = session.exec(
             select(UserDB).where(UserDB.username == username)
         ).first()
@@ -98,10 +98,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
 
 # ---------- AUTH ENDPOINTS ----------
 
-@router.post("/register", response_model=UserDB, status_code=201)
-def register_user(user_in: UserCreate):
+@router.post("/register", status_code=201)
+def register_user(user_in: UserCreate) -> dict:
     """Register a new user account."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         # Check if user already exists
         existing_user = session.exec(
             select(UserDB).where(UserDB.username == user_in.username)
@@ -142,22 +142,22 @@ def register_user(user_in: UserCreate):
         session.commit()
         session.refresh(user_db)
 
-        # Return user data without password
-        return UserDB(
-            id=user_db.id,
-            username=user_db.username,
-            email=user_db.email,
-            full_name=user_db.full_name,
-            avatar_url=user_db.avatar_url,
-            bio=user_db.bio,
-            location=user_db.location,
-            favorite_parks=user_db.favorite_parks,
-            badges_earned=user_db.badges_earned,
-            total_visits=user_db.total_visits,
-            joined_date=user_db.joined_date,
-            is_active=user_db.is_active,
-            role=user_db.role
-        )
+        # Return user data as dict
+        return {
+            "id": user_db.id,
+            "username": user_db.username,
+            "email": user_db.email,
+            "full_name": user_db.full_name,
+            "avatar_url": user_db.avatar_url,
+            "bio": user_db.bio,
+            "location": user_db.location,
+            "favorite_parks": user_db.favorite_parks,
+            "badges_earned": user_db.badges_earned,
+            "total_visits": user_db.total_visits,
+            "joined_date": user_db.joined_date,
+            "is_active": user_db.is_active,
+            "role": user_db.role
+        }
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -177,7 +177,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @router.get("/me", response_model=UserDB)
 def get_current_user_profile(current_user: User = Depends(get_current_user)):
     """Get current user profile information."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         user_db = session.exec(
             select(UserDB).where(UserDB.username == current_user.username)
         ).first()
@@ -204,7 +204,7 @@ def get_current_user_profile(current_user: User = Depends(get_current_user)):
 @router.put("/me", response_model=UserDB)
 def update_user_profile(user_update: dict, current_user: User = Depends(get_current_user)):
     """Update current user profile."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         user_db = session.exec(
             select(UserDB).where(UserDB.username == current_user.username)
         ).first()
@@ -241,7 +241,7 @@ def update_user_profile(user_update: dict, current_user: User = Depends(get_curr
 @router.post("/favorites/{park_id}")
 def add_park_to_favorites(park_id: int, current_user: User = Depends(get_current_user)):
     """Add a park to user's favorites."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         user_db = session.exec(
             select(UserDB).where(UserDB.username == current_user.username)
         ).first()
@@ -264,7 +264,7 @@ def add_park_to_favorites(park_id: int, current_user: User = Depends(get_current
 @router.delete("/favorites/{park_id}")
 def remove_park_from_favorites(park_id: int, current_user: User = Depends(get_current_user)):
     """Remove a park from user's favorites."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         user_db = session.exec(
             select(UserDB).where(UserDB.username == current_user.username)
         ).first()
@@ -282,7 +282,7 @@ def remove_park_from_favorites(park_id: int, current_user: User = Depends(get_cu
 @router.get("/favorites")
 def get_user_favorites(current_user: User = Depends(get_current_user)):
     """Get user's favorite parks with details."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         user_db = session.exec(
             select(UserDB).where(UserDB.username == current_user.username)
         ).first()
@@ -310,31 +310,3 @@ def get_user_favorites(current_user: User = Depends(get_current_user)):
         ]
 
         return {"favorites": favorites, "total": len(favorites)}
-
-# ---------- DEPENDENCIES ----------
-
-from fastapi import HTTPException, Depends
-from jose import JWTError, jwt
-from fastapi.security import OAuth2PasswordBearer
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
-
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-    )
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    user = get_user(username)
-    if user is None or user.disabled:
-        raise credentials_exception
-    return User(username=user.username, full_name=user.full_name, disabled=user.disabled)

@@ -2,134 +2,1305 @@
 
 {% block title %}Accueil - Parcs Nationaux de Tunisie{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Modern Vibrant Hero Section */
+.modern-nature-hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    background: linear-gradient(135deg,
+        #667eea 0%,
+        #764ba2 25%,
+        #f093fb 50%,
+        #f5576c 75%,
+        #4facfe 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg,
+        rgba(102, 126, 234, 0.9) 0%,
+        rgba(118, 75, 162, 0.85) 25%,
+        rgba(240, 147, 251, 0.8) 50%,
+        rgba(245, 87, 108, 0.75) 75%,
+        rgba(79, 172, 254, 0.9) 100%);
+    backdrop-filter: blur(1px);
+}
+
+.hero-bg-elements {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.floating-elements {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.floating-element {
+    position: absolute;
+    font-size: clamp(2rem, 8vw, 6rem);
+    animation: floatRandom 20s ease-in-out infinite;
+    opacity: 0.1;
+    filter: blur(1px);
+}
+
+.floating-element:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; content: "🌿"; }
+.floating-element:nth-child(2) { top: 20%; right: 15%; animation-delay: 2s; content: "🦌"; }
+.floating-element:nth-child(3) { bottom: 25%; left: 20%; animation-delay: 4s; content: "⛰️"; }
+.floating-element:nth-child(4) { top: 60%; right: 10%; animation-delay: 6s; content: "🌸"; }
+.floating-element:nth-child(5) { bottom: 40%; right: 25%; animation-delay: 8s; content: "🦅"; }
+.floating-element:nth-child(6) { top: 30%; left: 70%; animation-delay: 10s; content: "🌻"; }
+.floating-element:nth-child(7) { bottom: 60%; left: 5%; animation-delay: 12s; content: "🦋"; }
+.floating-element:nth-child(8) { top: 80%; right: 5%; animation-delay: 14s; content: "🌳"; }
+.floating-element:nth-child(9) { top: 45%; left: 45%; animation-delay: 16s; content: "🌺"; }
+.floating-element:nth-child(10) { bottom: 10%; left: 60%; animation-delay: 18s; content: "🌼"; }
+
+@keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes floatRandom {
+    0%, 100% {
+        transform: translateY(0px) translateX(0px) rotate(0deg) scale(1);
+        opacity: 0.1;
+    }
+    25% {
+        transform: translateY(-30px) translateX(20px) rotate(5deg) scale(1.1);
+        opacity: 0.15;
+    }
+    50% {
+        transform: translateY(-15px) translateX(-15px) rotate(-3deg) scale(0.9);
+        opacity: 0.2;
+    }
+    75% {
+        transform: translateY(-40px) translateX(10px) rotate(8deg) scale(1.05);
+        opacity: 0.12;
+    }
+}
+
+.hero-content-wrapper {
+    position: relative;
+    z-index: 10;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.hero-main-content {
+    color: white;
+    animation: slideInFromLeft 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.hero-premium-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50px;
+    padding: 1rem 2rem;
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: fadeInScale 0.8s ease 0.2s both;
+}
+
+.badge-glow {
+    position: relative;
+}
+
+.badge-glow::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(45deg, #fff, transparent, #fff);
+    border-radius: 50px;
+    opacity: 0.7;
+    animation: glowRotate 3s linear infinite;
+}
+
+@keyframes glowRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.hero-main-title {
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    animation: slideInFromLeft 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s both;
+}
+
+.hero-title-gradient {
+    background: linear-gradient(135deg,
+        #ffffff 0%,
+        #e0e7ff 25%,
+        #fce7f3 50%,
+        #fef3c7 75%,
+        #ecfdf5 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.3));
+}
+
+.hero-subtitle {
+    font-size: clamp(1.2rem, 3vw, 1.5rem);
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 2.5rem;
+    max-width: 600px;
+    animation: slideInFromLeft 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s both;
+}
+
+.hero-cta-buttons {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+    animation: slideInFromLeft 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.4s both;
+}
+
+.hero-cta-primary,
+.hero-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 2.5rem;
+    border-radius: 20px;
+    font-size: 1.125rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+    transform: translateY(0);
+}
+
+.hero-cta-primary {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.hero-cta-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.3) 0%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.3) 100%);
+    transform: translateX(-100%);
+    transition: transform 0.8s;
+}
+
+.hero-cta-primary:hover::before {
+    transform: translateX(100%);
+}
+
+.hero-cta-primary:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+}
+
+.hero-cta-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+.hero-cta-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.hero-trust-indicators {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    animation: slideInFromLeft 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both;
+}
+
+.trust-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    transition: all 0.3s ease;
+}
+
+.trust-indicator:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.trust-indicator-icon {
+    font-size: 1.5rem;
+    opacity: 0.9;
+}
+
+.hero-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    animation: slideInFromRight 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s both;
+}
+
+.hero-stat-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.hero-stat-card:hover::before {
+    opacity: 1;
+}
+
+.hero-stat-card:hover {
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.hero-stat-card.featured {
+    grid-column: span 2;
+    background: rgba(255, 255, 255, 0.25);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    animation: pulseGlow 3s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+    50% {
+        box-shadow: 0 20px 40px rgba(255, 255, 255, 0.3);
+    }
+}
+
+.hero-stat-sparkle {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 1.5rem;
+    animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+    0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
+    50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+}
+
+.hero-stat-number {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 900;
+    color: white;
+    margin-bottom: 0.5rem;
+     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    animation: countUp 2s ease-out;
+}
+
+.hero-stat-card.featured .hero-stat-number {
+    font-size: clamp(3rem, 7vw, 5rem);
+}
+
+@keyframes countUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.hero-stat-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.hero-stat-icon {
+    font-size: 3rem;
+    margin-top: 1rem;
+    opacity: 0.8;
+    animation: bounce 3s ease-in-out infinite;
+}
+
+.hero-scroll-hint {
+    position: absolute;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    animation: fadeIn 1s ease 1s both;
+    z-index: 10;
+}
+
+.scroll-mouse-hint {
+    width: 28px;
+    height: 42px;
+    border: 3px solid rgba(255, 255, 255, 0.6);
+    border-radius: 14px;
+    position: relative;
+    animation: bounce 2s infinite;
+}
+
+.scroll-mouse-wheel {
+    width: 6px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 3px;
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: scrollWheel 2s infinite;
+}
+
+.scroll-hint-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: center;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.scroll-sparkles-hint {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 1rem;
+}
+
+.scroll-sparkles-hint span {
+    animation: sparkle 2.5s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 0.3s);
+}
+
+@keyframes slideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0) translateX(-50%);
+    }
+    40% {
+        transform: translateY(-8px) translateX(-50%);
+    }
+    60% {
+        transform: translateY(-4px) translateX(-50%);
+    }
+}
+
+@keyframes scrollWheel {
+    0%, 100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(0);
+    }
+    50% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(12px);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+/* Enhanced Quick Actions */
+.vibrant-quick-actions {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    padding: 5rem 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.vibrant-quick-actions::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(circle at 20% 80%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(240, 147, 251, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(245, 87, 108, 0.1) 0%, transparent 50%);
+    animation: patternShift 20s ease-in-out infinite;
+}
+
+@keyframes patternShift {
+    0%, 100% {
+        transform: translateX(0) translateY(0) scale(1);
+    }
+    33% {
+        transform: translateX(30px) translateY(-20px) scale(1.05);
+    }
+    66% {
+        transform: translateX(-20px) translateY(30px) scale(0.95);
+    }
+}
+
+.quick-actions-container {
+    position: relative;
+    z-index: 10;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+}
+
+.quick-action-enhanced {
+    background: white;
+    border-radius: 24px;
+    padding: 3rem 2rem;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.quick-action-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.05), transparent);
+    transition: left 0.8s;
+}
+
+.quick-action-enhanced:hover::before {
+    left: 100%;
+}
+
+.quick-action-enhanced:hover {
+    transform: translateY(-12px) scale(1.02);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    border-color: rgba(102, 126, 234, 0.2);
+}
+
+.quick-action-icon-enhanced {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.quick-action-enhanced:hover .quick-action-icon-enhanced {
+    transform: scale(1.1) rotate(5deg);
+    background: linear-gradient(135deg, #764ba2, #f093fb);
+    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+}
+
+.quick-action-enhanced h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #1e293b;
+}
+
+.quick-action-enhanced p {
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.quick-action-arrow-enhanced {
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.quick-action-enhanced:hover .quick-action-arrow-enhanced {
+    transform: translateX(8px) scale(1.1);
+    background: linear-gradient(135deg, #764ba2, #f093fb);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Interactive Stats Section */
+.interactive-stats-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 5rem 0;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.interactive-stats-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.03"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.03"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.05"/><circle cx="10" cy="50" r="0.5" fill="white" opacity="0.05"/><circle cx="90" cy="30" r="0.5" fill="white" opacity="0.05"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    animation: grainMove 10s ease-in-out infinite;
+}
+
+@keyframes grainMove {
+    0%, 100% { transform: translateX(0) translateY(0); }
+    25% { transform: translateX(-10px) translateY(5px); }
+    50% { transform: translateX(5px) translateY(-10px); }
+    75% { transform: translateX(-5px) translateY(10px); }
+}
+
+.stats-container {
+    position: relative;
+    z-index: 10;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.stats-grid-interactive {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+.stat-card-interactive {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 24px;
+    padding: 3rem 2rem;
+    text-align: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.stat-card-interactive::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.stat-card-interactive:hover::before {
+    opacity: 1;
+}
+
+.stat-card-interactive:hover {
+    transform: translateY(-15px) scale(1.05);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.stat-card-interactive.featured {
+    grid-column: span 2;
+    background: rgba(255, 255, 255, 0.25);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.stat-icon-interactive {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    margin: 0 auto 1.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.stat-card-interactive:hover .stat-icon-interactive {
+    transform: scale(1.1) rotate(5deg);
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.stat-number-interactive {
+    font-size: clamp(3rem, 8vw, 5rem);
+    font-weight: 900;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    animation: countUp 2s ease-out;
+}
+
+.stat-card-interactive.featured .stat-number-interactive {
+    font-size: clamp(4rem, 10vw, 6rem);
+}
+
+.stat-label-interactive {
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.9;
+}
+
+.stat-sparkle-interactive {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 1.5rem;
+    animation: sparkle 2s ease-in-out infinite;
+    opacity: 0.8;
+}
+
+/* Featured Content Section */
+.featured-content-section {
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+    padding: 5rem 0;
+    position: relative;
+}
+
+.featured-content-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #667eea, transparent);
+}
+
+.content-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.section-header-enhanced {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.section-title-enhanced {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 900;
+    color: #1e293b;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.section-subtitle-enhanced {
+    font-size: 1.25rem;
+    color: #64748b;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.featured-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 4rem;
+}
+
+.featured-card {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.featured-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 25px 50px rgba(102, 126, 234, 0.15);
+    border-color: rgba(102, 126, 234, 0.2);
+}
+
+.featured-image-container {
+    position: relative;
+    overflow: hidden;
+    height: 250px;
+}
+
+.featured-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.featured-card:hover .featured-image {
+    transform: scale(1.1);
+}
+
+.featured-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(240, 147, 251, 0.1));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.featured-card:hover .featured-overlay {
+    opacity: 1;
+}
+
+.featured-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.featured-content {
+    padding: 2rem;
+}
+
+.featured-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+}
+
+.featured-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 1rem;
+    line-height: 1.3;
+}
+
+.featured-description {
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.featured-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.featured-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.see-all-section {
+    text-align: center;
+}
+
+.btn-see-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 1.25rem 2.5rem;
+    border-radius: 15px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    border: 2px solid transparent;
+}
+
+.btn-see-all:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #764ba2, #f093fb);
+}
+
+.btn-see-all-icon {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.btn-see-all:hover .btn-see-all-icon {
+    transform: translateX(5px);
+}
+
+/* Call to Action Section */
+.cta-section-final {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    padding: 5rem 0;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.cta-section-final::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="stars" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="white" opacity="0.1"/><circle cx="5" cy="15" r="0.5" fill="white" opacity="0.05"/><circle cx="15" cy="5" r="0.5" fill="white" opacity="0.05"/></pattern></defs><rect width="100" height="100" fill="url(%23stars)"/></svg>');
+    animation: twinkle 8s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+}
+
+.cta-container {
+    position: relative;
+    z-index: 10;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    text-align: center;
+}
+
+.cta-title {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 900;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.cta-description {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    margin-bottom: 3rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cta-buttons {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.cta-btn-primary,
+.cta-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 2.5rem;
+    border-radius: 15px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.cta-btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: 2px solid transparent;
+}
+
+.cta-btn-primary:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #764ba2, #f093fb);
+}
+
+.cta-btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.cta-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.cta-sparkles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.cta-sparkle {
+    position: absolute;
+    font-size: 1rem;
+    animation: sparkle 3s ease-in-out infinite;
+    opacity: 0.6;
+}
+
+.cta-sparkle:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+.cta-sparkle:nth-child(2) { top: 30%; right: 15%; animation-delay: 1s; }
+.cta-sparkle:nth-child(3) { bottom: 25%; left: 20%; animation-delay: 2s; }
+.cta-sparkle:nth-child(4) { top: 60%; right: 25%; animation-delay: 0.5s; }
+.cta-sparkle:nth-child(5) { bottom: 40%; right: 10%; animation-delay: 1.5s; }
+
+/* Responsive Enhancements */
+@media (max-width: 768px) {
+    .modern-nature-hero {
+        min-height: auto;
+        padding: 4rem 0;
+    }
+
+    .hero-content-wrapper {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .hero-main-content {
+        order: 2;
+    }
+
+    .hero-stats-grid {
+        order: 1;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .hero-stat-card {
+        padding: 1.5rem 1rem;
+    }
+
+    .hero-stat-number {
+        font-size: 2rem;
+    }
+
+    .hero-stat-card.featured .hero-stat-number {
+        font-size: 2.5rem;
+    }
+
+    .hero-cta-buttons {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .hero-cta-primary,
+    .hero-cta-secondary {
+        padding: 1rem 2rem;
+        font-size: 1rem;
+    }
+
+    .quick-actions-grid,
+    .stats-grid-interactive,
+    .featured-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cta-buttons {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .cta-btn-primary,
+    .cta-btn-secondary {
+        padding: 1rem 2rem;
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-content-wrapper {
+        padding: 0.5rem;
+    }
+
+    .hero-main-title {
+        font-size: clamp(2.5rem, 10vw, 4rem);
+    }
+
+    .hero-subtitle {
+        font-size: 1.1rem;
+    }
+
+    .hero-premium-badge {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.8rem;
+    }
+
+    .hero-stat-card.featured {
+        grid-column: span 2;
+    }
+
+    .hero-stat-number {
+        font-size: 1.5rem;
+    }
+
+    .hero-stat-card.featured .hero-stat-number {
+        font-size: 2rem;
+    }
+
+    .section-title-enhanced {
+        font-size: clamp(2rem, 8vw, 3rem);
+    }
+
+    .cta-title {
+        font-size: clamp(2rem, 8vw, 3rem);
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 
-<!-- Joyful Nature Hero Section -->
-<section class="nature-hero">
-    <!-- Animated Nature Background -->
-    <div class="hero-bg">
-        <div class="hero-bg-pattern"></div>
-        <div class="hero-bg-gradient"></div>
-        <div class="hero-bg-shapes">
-            <div class="floating-shape shape-1">🌿</div>
-            <div class="floating-shape shape-2">🦌</div>
-            <div class="floating-shape shape-3">⛰️</div>
-            <div class="floating-shape shape-4">🌸</div>
-            <div class="floating-shape shape-5">🦅</div>
-            <div class="floating-shape shape-6">🌻</div>
-            <div class="floating-shape shape-7">🦋</div>
-            <div class="floating-shape shape-8">🌳</div>
-        </div>
-        <div class="hero-particles">
-            <div class="particle particle-1"></div>
-            <div class="particle particle-2"></div>
-            <div class="particle particle-3"></div>
-            <div class="particle particle-4"></div>
-            <div class="particle particle-5"></div>
+<!-- Modern Vibrant Hero Section -->
+<section class="modern-nature-hero">
+    <!-- Background Elements -->
+    <div class="hero-overlay"></div>
+    <div class="hero-bg-elements">
+        <div class="floating-elements">
+            <div class="floating-element">🌿</div>
+            <div class="floating-element">🦌</div>
+            <div class="floating-element">⛰️</div>
+            <div class="floating-element">🌸</div>
+            <div class="floating-element">🦅</div>
+            <div class="floating-element">🌻</div>
+            <div class="floating-element">🦋</div>
+            <div class="floating-element">🌳</div>
+            <div class="floating-element">🌺</div>
+            <div class="floating-element">🌼</div>
         </div>
     </div>
 
     <!-- Hero Content -->
-    <div class="hero-container">
+    <div class="hero-content-wrapper">
         <!-- Main Content -->
-        <div class="hero-main">
-            <div class="hero-badge">
-                <span class="badge-icon">✨</span>
-                <span class="badge-text">Patrimoine Naturel Mondial</span>
+        <div class="hero-main-content" data-aos="fade-right">
+            <div class="hero-premium-badge">
+                <span class="badge-glow">✨</span>
+                <span>Patrimoine Naturel Mondial</span>
             </div>
 
-            <h1 class="hero-title">
-                <span class="hero-title-main">Bienvenue dans le</span>
-                <span class="hero-title-accent">Jardin d'Éden</span>
-                <span class="hero-title-sub">de la Tunisie</span>
+            <h1 class="hero-main-title">
+                <span class="hero-title-gradient">Découvrez</span>
+                <span class="hero-title-gradient">les 17 Joyaux</span>
+                <span class="hero-title-gradient">de la Tunisie</span>
             </h1>
 
-            <p class="hero-description">
-                🌟 Découvrez 17 joyaux naturels exceptionnels, où la biodiversité danse avec la beauté sauvage.
-                Chaque parc raconte une histoire de vie, de couleur et d'émerveillement. Laissez-vous transporter
-                par la magie de la nature tunisienne ! 🦋🌸
+            <p class="hero-subtitle">
+                🌟 Explorez des parcs nationaux d'exception où la biodiversité rencontre la beauté sauvage.
+                Chaque réserve raconte une histoire unique de vie, de couleur et d'émerveillement dans
+                le jardin d'Éden tunisien ! 🦋🌸
             </p>
 
             <!-- Action Buttons -->
-            <div class="hero-actions">
-                <a href="/parks" class="btn-primary-joy">
+            <div class="hero-cta-buttons">
+                <a href="/parks" class="hero-cta-primary">
                     <span class="btn-sparkle">✨</span>
-                    <span class="btn-icon">🌲</span>
-                    <span class="btn-text">Commencer l'Aventure</span>
-                    <span class="btn-heart">💚</span>
+                    <span>Explorer les Parcs</span>
+                    <span class="btn-arrow">→</span>
                 </a>
 
-                <a href="/map" class="btn-secondary-joy">
-                    <span class="btn-icon">🗺️</span>
-                    <span class="btn-text">Explorer la Carte</span>
-                    <span class="btn-compass">🧭</span>
+                <a href="/map" class="hero-cta-secondary">
+                    <span>🗺️</span>
+                    <span>Voir la Carte</span>
+                    <span>🧭</span>
                 </a>
             </div>
 
-            <!-- Joyful Trust Indicators -->
-            <div class="hero-trust">
-                <div class="trust-item">
-                    <span class="trust-icon">💚</span>
-                    <span class="trust-text">Nature Protégée</span>
+            <!-- Trust Indicators -->
+            <div class="hero-trust-indicators">
+                <div class="trust-indicator">
+                    <span class="trust-indicator-icon">💚</span>
+                    <span>Nature Protégée</span>
                 </div>
-                <div class="trust-item">
-                    <span class="trust-icon">🎯</span>
-                    <span class="trust-text">Recommandations IA</span>
+                <div class="trust-indicator">
+                    <span class="trust-indicator-icon">🎯</span>
+                    <span>Recommandations IA</span>
                 </div>
-                <div class="trust-item">
-                    <span class="trust-icon">📱</span>
-                    <span class="trust-text">Expérience Mobile</span>
+                <div class="trust-indicator">
+                    <span class="trust-indicator-icon">📱</span>
+                    <span>Expérience Mobile</span>
                 </div>
-                <div class="trust-item">
-                    <span class="trust-icon">🌟</span>
-                    <span class="trust-text">Aventure Garantie</span>
+                <div class="trust-indicator">
+                    <span class="trust-indicator-icon">🌟</span>
+                    <span>Aventure Garantie</span>
                 </div>
             </div>
         </div>
 
-        <!-- Vibrant Stats Cards -->
-        <div class="hero-stats">
-            <div class="stat-card featured">
-                <div class="stat-sparkle">✨</div>
-                <div class="stat-number">17</div>
-                <div class="stat-label">Parcs Magiques</div>
-                <div class="stat-icon">🏞️</div>
-                <div class="stat-decoration">🌟</div>
+        <!-- Interactive Stats -->
+        <div class="hero-stats-grid" data-aos="fade-left">
+            <div class="hero-stat-card featured">
+                <div class="hero-stat-sparkle">✨</div>
+                <div class="hero-stat-number" id="heroParksCount">17</div>
+                <div class="hero-stat-label">Parcs Magiques</div>
+                <div class="hero-stat-icon">🏞️</div>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-sparkle">🦋</div>
-                <div class="stat-number">250+</div>
-                <div class="stat-label">Créatures</div>
-                <div class="stat-icon">🦋</div>
-                <div class="stat-decoration">💫</div>
+            <div class="hero-stat-card">
+                <div class="hero-stat-sparkle">🦋</div>
+                <div class="hero-stat-number" id="heroSpeciesCount">250+</div>
+                <div class="hero-stat-label">Créatures</div>
+                <div class="hero-stat-icon">🦋</div>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-sparkle">🌍</div>
-                <div class="stat-number">150k</div>
-                <div class="stat-label">Hectares</div>
-                <div class="stat-icon">🌍</div>
-                <div class="stat-decoration">🌱</div>
+            <div class="hero-stat-card">
+                <div class="hero-stat-sparkle">🌍</div>
+                <div class="hero-stat-number">150k</div>
+                <div class="hero-stat-label">Hectares</div>
+                <div class="hero-stat-icon">🌍</div>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-sparkle">🥾</div>
-                <div class="stat-number">45+</div>
-                <div class="stat-label">Sentiers</div>
-                <div class="stat-icon">🥾</div>
-                <div class="stat-decoration">🌿</div>
+            <div class="hero-stat-card">
+                <div class="hero-stat-sparkle">🥾</div>
+                <div class="hero-stat-number">45+</div>
+                <div class="hero-stat-label">Sentiers</div>
+                <div class="hero-stat-icon">🥾</div>
             </div>
         </div>
     </div>
 
-    <!-- Joyful Scroll Indicator -->
-    <div class="hero-scroll">
-        <div class="scroll-mouse">
-            <div class="scroll-wheel"></div>
+    <!-- Scroll Hint -->
+    <div class="hero-scroll-hint">
+        <div class="scroll-mouse-hint">
+            <div class="scroll-mouse-wheel"></div>
         </div>
-        <span class="scroll-text">Faites défiler pour découvrir la magie 🌟</span>
-        <div class="scroll-sparkles">
+        <span class="scroll-hint-text">Découvrez la magie</span>
+        <div class="scroll-sparkles-hint">
             <span>✨</span>
             <span>💫</span>
             <span>⭐</span>
@@ -137,47 +1308,47 @@
     </div>
 </section>
 
-<!-- Quick Actions Section -->
-<section class="section" style="padding: var(--spacing-2xl) 0; background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);">
-    <div class="container">
+<!-- Enhanced Quick Actions Section -->
+<section class="vibrant-quick-actions" data-aos="fade-up">
+    <div class="quick-actions-container">
         <div class="quick-actions-grid">
-            <a href="/parks" class="quick-action-card">
-                <div class="quick-action-icon">
+            <a href="/parks" class="quick-action-enhanced" data-aos="zoom-in" data-aos-delay="100">
+                <div class="quick-action-icon-enhanced">
                     <i class="fas fa-tree"></i>
                 </div>
                 <h3>Explorer les Parcs</h3>
                 <p>Découvrez nos 17 parcs nationaux avec photos et informations détaillées</p>
-                <div class="quick-action-arrow">
+                <div class="quick-action-arrow-enhanced">
                     <i class="fas fa-arrow-right"></i>
                 </div>
             </a>
-            <a href="/species" class="quick-action-card">
-                <div class="quick-action-icon">
+            <a href="/species" class="quick-action-enhanced" data-aos="zoom-in" data-aos-delay="200">
+                <div class="quick-action-icon-enhanced">
                     <i class="fas fa-paw"></i>
                 </div>
                 <h3>Faune & Flore</h3>
                 <p>Explorez la biodiversité exceptionnelle avec plus de 250 espèces</p>
-                <div class="quick-action-arrow">
+                <div class="quick-action-arrow-enhanced">
                     <i class="fas fa-arrow-right"></i>
                 </div>
             </a>
-            <a href="/trails" class="quick-action-card">
-                <div class="quick-action-icon">
+            <a href="/trails" class="quick-action-enhanced" data-aos="zoom-in" data-aos-delay="300">
+                <div class="quick-action-icon-enhanced">
                     <i class="fas fa-hiking"></i>
                 </div>
                 <h3>Sentiers de Randonnée</h3>
                 <p>Plus de 45 sentiers balisés pour tous les niveaux</p>
-                <div class="quick-action-arrow">
+                <div class="quick-action-arrow-enhanced">
                     <i class="fas fa-arrow-right"></i>
                 </div>
             </a>
-            <a href="/map" class="quick-action-card">
-                <div class="quick-action-icon">
+            <a href="/map" class="quick-action-enhanced" data-aos="zoom-in" data-aos-delay="400">
+                <div class="quick-action-icon-enhanced">
                     <i class="fas fa-map-marked-alt"></i>
                 </div>
                 <h3>Carte Interactive</h3>
                 <p>Localisez tous les parcs sur une carte détaillée</p>
-                <div class="quick-action-arrow">
+                <div class="quick-action-arrow-enhanced">
                     <i class="fas fa-arrow-right"></i>
                 </div>
             </a>
@@ -185,188 +1356,144 @@
     </div>
 </section>
 
-<!-- Statistics Section -->
-<section class="section">
-    <div class="container">
-        <div class="stats-grid stagger-children">
-            <div class="stat-card">
-                <div class="stat-card-icon"><i class="fas fa-mountain"></i></div>
-                <div class="stat-card-value" id="parksCount">17</div>
-                <div class="stat-card-label">Parcs Nationaux</div>
+<!-- Interactive Stats Section -->
+<section class="interactive-stats-section" data-aos="fade-up">
+    <div class="stats-container">
+        <div class="stats-grid-interactive">
+            <div class="stat-card-interactive featured" data-aos="zoom-in" data-aos-delay="100">
+                <div class="stat-icon-interactive">🏞️</div>
+                <div class="stat-number-interactive" id="statsParksCount">17</div>
+                <div class="stat-label-interactive">Parcs Nationaux</div>
+                <div class="stat-sparkle-interactive">✨</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-card-icon"><i class="fas fa-paw"></i></div>
-                <div class="stat-card-value" id="speciesCount">400+</div>
-                <div class="stat-card-label">Espèces Protégées</div>
+
+            <div class="stat-card-interactive" data-aos="zoom-in" data-aos-delay="200">
+                <div class="stat-icon-interactive">🦋</div>
+                <div class="stat-number-interactive" id="statsSpeciesCount">400+</div>
+                <div class="stat-label-interactive">Espèces Protégées</div>
+                <div class="stat-sparkle-interactive">🦋</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-card-icon"><i class="fas fa-hiking"></i></div>
-                <div class="stat-card-value" id="trailsCount">45+</div>
-                <div class="stat-card-label">Sentiers de Randonnée</div>
+
+            <div class="stat-card-interactive" data-aos="zoom-in" data-aos-delay="300">
+                <div class="stat-icon-interactive">🥾</div>
+                <div class="stat-number-interactive" id="statsTrailsCount">45+</div>
+                <div class="stat-label-interactive">Sentiers de Randonnée</div>
+                <div class="stat-sparkle-interactive">🥾</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-card-icon"><i class="fas fa-map-marked"></i></div>
-                <div class="stat-card-value">150k</div>
-                <div class="stat-card-label">Hectares Protégés</div>
+
+            <div class="stat-card-interactive" data-aos="zoom-in" data-aos-delay="400">
+                <div class="stat-icon-interactive">🌍</div>
+                <div class="stat-number-interactive">150k</div>
+                <div class="stat-label-interactive">Hectares Protégés</div>
+                <div class="stat-sparkle-interactive">🌍</div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Featured Parks Section -->
-<section class="section" style="background: white;">
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">Parcs à la Une</h2>
-            <p class="section-subtitle">
+<!-- Featured Content Section -->
+<section class="featured-content-section" data-aos="fade-up">
+    <div class="content-container">
+        <div class="section-header-enhanced" data-aos="fade-up">
+            <h2 class="section-title-enhanced">Parcs à la Une</h2>
+            <p class="section-subtitle-enhanced">
                 Découvrez nos parcs les plus visités et les plus spectaculaires
             </p>
         </div>
 
-        <div class="grid grid-3 stagger-children" id="featuredParks">
+        <div class="featured-grid" id="featuredParksGrid">
             <!-- Parks will be loaded dynamically -->
-            <div class="card skeleton">
-                <div class="skeleton-image"></div>
-                <div class="card-content">
-                    <div class="skeleton-title"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text"></div>
+            <div class="featured-card skeleton" data-aos="fade-up" data-aos-delay="100">
+                <div class="featured-image-container">
+                    <div class="skeleton skeleton-image"></div>
+                </div>
+                <div class="featured-content">
+                    <div class="skeleton skeleton-title"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text" style="width: 70%;"></div>
                 </div>
             </div>
-            <div class="card skeleton">
-                <div class="skeleton-image"></div>
-                <div class="card-content">
-                    <div class="skeleton-title"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text"></div>
+            <div class="featured-card skeleton" data-aos="fade-up" data-aos-delay="200">
+                <div class="featured-image-container">
+                    <div class="skeleton skeleton-image"></div>
+                </div>
+                <div class="featured-content">
+                    <div class="skeleton skeleton-title"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text" style="width: 70%;"></div>
                 </div>
             </div>
-            <div class="card skeleton">
-                <div class="skeleton-image"></div>
-                <div class="card-content">
-                    <div class="skeleton-title"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text"></div>
+            <div class="featured-card skeleton" data-aos="fade-up" data-aos-delay="300">
+                <div class="featured-image-container">
+                    <div class="skeleton skeleton-image"></div>
+                </div>
+                <div class="featured-content">
+                    <div class="skeleton skeleton-title"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text" style="width: 70%;"></div>
                 </div>
             </div>
         </div>
 
-        <div style="text-align: center; margin-top: 2rem;">
-            <a href="/parks" class="btn btn-primary">
-                <i class="fas fa-th"></i> Voir Tous les Parcs
+        <div class="see-all-section" data-aos="fade-up" data-aos-delay="400">
+            <a href="/parks" class="btn-see-all">
+                <span>Explorer Tous les Parcs</span>
+                <span class="btn-see-all-icon">→</span>
             </a>
         </div>
     </div>
 </section>
 
-<!-- Features Section -->
-<section class="section">
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">Pourquoi Visiter Nos Parcs?</h2>
-        </div>
-
-        <div class="grid grid-3 stagger-children">
-            <div class="card hover-lift">
-                <div class="card-content" style="text-align: center;">
-                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
-                        <i class="fas fa-binoculars"></i>
-                    </div>
-                    <h3>Biodiversité Unique</h3>
-                    <p>Observez des espèces rares et endémiques dans leur habitat naturel. Plus de 250 espèces protégées vous attendent.</p>
-                </div>
-            </div>
-
-            <div class="card hover-lift">
-                <div class="card-content" style="text-align: center;">
-                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
-                        <i class="fas fa-route"></i>
-                    </div>
-                    <h3>Sentiers Aménagés</h3>
-                    <p>Profitez de plus de 45 sentiers balisés, adaptés à tous les niveaux, du débutant au randonneur expérimenté.</p>
-                </div>
-            </div>
-
-            <div class="card hover-lift">
-                <div class="card-content" style="text-align: center;">
-                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <h3>Espaces Protégés</h3>
-                    <p>Visitez des zones protégées où la nature est préservée pour les générations futures.</p>
-                </div>
-            </div>
-
-            <div class="card hover-lift">
-                <div class="card-content" style="text-align: center;">
-                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
-                        <i class="fas fa-sun"></i>
-                    </div>
-                    <h3>Climat Idéal</h3>
-                    <p>Profitez d'un climat méditerranéen agréable pour vos visites toute l'année.</p>
-                </div>
-            </div>
-
-            <div class="card hover-lift">
-                <div class="card-content" style="text-align: center;">
-                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
-                        <i class="fas fa-camera"></i>
-                    </div>
-                    <h3>Paysages Époustouflants</h3>
-                    <p>Des montagnes aux déserts, en passant par les zones humides, chaque parc offre des panoramas uniques.</p>
-                </div>
-            </div>
-
-            <div class="card hover-lift">
-                <div class="card-content" style="text-align: center;">
-                    <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <h3>Accueil Familial</h3>
-                    <p>Des activités pour toute la famille dans un environnement sûr et accueillant.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Wildlife Section -->
-<section class="section" style="background: white;">
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">Faune & Flore</h2>
-            <p class="section-subtitle">
+<!-- Biodiversity Section -->
+<section class="featured-content-section" data-aos="fade-up">
+    <div class="content-container">
+        <div class="section-header-enhanced" data-aos="fade-up">
+            <h2 class="section-title-enhanced">Faune & Flore</h2>
+            <p class="section-subtitle-enhanced">
                 Découvrez la richesse de la biodiversité tunisienne
             </p>
         </div>
 
-        <div class="grid grid-4" id="featuredSpecies">
+        <div class="featured-grid" id="featuredSpeciesGrid">
             <!-- Species will be loaded dynamically -->
         </div>
 
-        <div style="text-align: center; margin-top: 2rem;">
-            <a href="/species" class="btn btn-outline">
-                <i class="fas fa-leaf"></i> Voir Toute la Biodiversité
+        <div class="see-all-section" data-aos="fade-up">
+            <a href="/species" class="btn-see-all">
+                <span>Voir Toute la Biodiversité</span>
+                <span class="btn-see-all-icon">→</span>
             </a>
         </div>
     </div>
 </section>
 
-<!-- Call to Action -->
-<section class="section" style="background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); color: white;">
-    <div class="container" style="text-align: center;">
-        <h2 style="color: white; margin-bottom: 1rem;">Prêt pour l'Aventure?</h2>
-        <p style="font-size: 1.25rem; color: rgba(255,255,255,0.9); margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+<!-- Final Call to Action -->
+<section class="cta-section-final" data-aos="fade-up">
+    <div class="cta-container">
+        <h2 class="cta-title" data-aos="zoom-in">Prêt pour l'Aventure?</h2>
+        <p class="cta-description" data-aos="fade-up" data-aos-delay="200">
             Planifiez votre visite dès maintenant et explorez les merveilles naturelles de la Tunisie.
+            Chaque parc vous réserve des découvertes extraordinaires !
         </p>
-        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-            <a href="/map" class="btn btn-secondary btn-lg">
-                <i class="fas fa-compass"></i> Planifier ma Visite
+        <div class="cta-buttons" data-aos="fade-up" data-aos-delay="400">
+            <a href="/map" class="cta-btn-primary">
+                <span>🗺️</span>
+                <span>Planifier ma Visite</span>
+                <span>🧭</span>
             </a>
-            <a href="/trails" class="btn btn-outline" style="border-color: white; color: white;">
-                <i class="fas fa-hiking"></i> Explorer les Sentiers
+            <a href="/trails" class="cta-btn-secondary">
+                <span>🥾</span>
+                <span>Explorer les Sentiers</span>
+                <span>🌿</span>
             </a>
         </div>
+    </div>
+    <div class="cta-sparkles">
+        <div class="cta-sparkle">✨</div>
+        <div class="cta-sparkle">💫</div>
+        <div class="cta-sparkle">⭐</div>
+        <div class="cta-sparkle">🌟</div>
+        <div class="cta-sparkle">✨</div>
     </div>
 </section>
 
@@ -374,100 +1501,346 @@
 
 {% block extra_js %}
 <script>
-// Load featured parks
-async function loadFeaturedParks() {
-    try {
-        const response = await fetch('/api/parks');
-        const parks = await response.json();
-        
-        // Get top 3 parks (you can customize this logic)
-        const featured = parks.slice(0, 3);
-        
-        const container = document.getElementById('featuredParks');
-        container.innerHTML = '';
-        
-        featured.forEach(park => {
-            const card = document.createElement('div');
-            card.className = 'card hover-lift';
-            
-            const imageUrl = park.images && park.images.length > 0 
-                ? park.images[0] 
-                : 'https://via.placeholder.com/400x250?text=' + encodeURIComponent(park.name);
-            
-            card.innerHTML = `
-                <div class="zoom-container">
-                    <img src="${imageUrl}" alt="${park.name}" class="card-image">
-                </div>
-                <div class="card-content">
-                    <h3 class="card-title">${park.name}</h3>
-                    <div class="card-meta">
-                        <span><i class="fas fa-map-marker-alt"></i> ${park.governorate}</span>
-                        <span><i class="fas fa-ruler-combined"></i> ${park.area_km2} km²</span>
-                    </div>
-                    <p class="card-description">${park.description.substring(0, 120)}...</p>
-                    <a href="/parks/${park.id}" class="btn btn-primary" style="width: 100%;">
-                        <i class="fas fa-arrow-right"></i> Découvrir
-                    </a>
-                </div>
-            `;
-            
-            container.appendChild(card);
-        });
-        
-        // Update stats
-        document.getElementById('parksCount').textContent = parks.length;
-        
-    } catch (error) {
-        console.error('Error loading parks:', error);
-    }
-}
+// Enhanced homepage functionality with modern features
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Enhanced Homepage loaded successfully!');
 
-// Load featured species
-async function loadFeaturedSpecies() {
-    try {
-        const response = await fetch('/api/species');
-        const species = await response.json();
-        
-        // Get random 4 species
-        const featured = species.sort(() => 0.5 - Math.random()).slice(0, 4);
-        
-        const container = document.getElementById('featuredSpecies');
-        container.innerHTML = '';
-        
-        featured.forEach(s => {
-            const card = document.createElement('div');
-            card.className = 'card hover-lift';
-            
-            const imageUrl = s.image_url || 'https://via.placeholder.com/300x200?text=' + encodeURIComponent(s.name);
-            
-            card.innerHTML = `
-                <div class="zoom-container">
-                    <img src="${imageUrl}" alt="${s.name}" style="width: 100%; height: 200px; object-fit: cover;">
-                </div>
-                <div class="card-content">
-                    <span class="badge ${s.type === 'animal' ? 'badge-info' : 'badge-success'}">
-                        <i class="fas fa-${s.type === 'animal' ? 'paw' : 'leaf'}"></i> ${s.type === 'animal' ? 'Animal' : 'Plante'}
-                    </span>
-                    <h4 style="margin-top: 0.5rem;">${s.name}</h4>
-                    <p style="font-style: italic; color: var(--text-secondary); font-size: 0.875rem;">${s.scientific_name}</p>
-                </div>
-            `;
-            
-            container.appendChild(card);
-        });
-        
-        // Update stats
-        document.getElementById('speciesCount').textContent = species.length + '+';
-        
-    } catch (error) {
-        console.error('Error loading species:', error);
+    // Initialize AOS for animations
+    if (typeof AOS !== 'undefined') {
+        AOS.refresh();
     }
-}
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    loadFeaturedParks();
-    loadFeaturedSpecies();
+    loadEnhancedHomepageData();
+
+    // Add intersection observer for performance
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('animate-in');
+            }
+        });
+    }, observerOptions);
+
+    // Observe elements for animations
+    document.querySelectorAll('.featured-card, .stat-card-interactive, .quick-action-enhanced').forEach(el => {
+        observer.observe(el);
+    });
+
+    // Add smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
 });
+
+async function loadEnhancedHomepageData() {
+    try {
+        console.log('Loading enhanced homepage data...');
+
+        // Load parks data with error handling
+        const parksResponse = await fetch('/api/parks');
+        if (!parksResponse.ok) {
+            throw new Error(`Parks API error: ${parksResponse.status}`);
+        }
+        const parks = await parksResponse.json();
+        console.log(`Loaded ${parks.length} parks`);
+
+        // Load species data with error handling
+        const speciesResponse = await fetch('/api/species');
+        if (!speciesResponse.ok) {
+            throw new Error(`Species API error: ${speciesResponse.status}`);
+        }
+        const species = await speciesResponse.json();
+        console.log(`Loaded ${species.length} species`);
+
+        // Update stats with animations
+        updateStatsWithAnimation(parks.length, species.length);
+
+        // Load featured content with enhanced UI
+        loadFeaturedParksEnhanced(parks);
+        loadFeaturedSpeciesEnhanced(species);
+
+        console.log('Enhanced homepage data loaded successfully!');
+
+    } catch (error) {
+        console.error('Error loading enhanced homepage data:', error);
+        showEnhancedError('Erreur de chargement des données', error.message);
+    }
+}
+
+function updateStatsWithAnimation(parksCount, speciesCount) {
+    // Animate hero stats
+    animateNumber('heroParksCount', parksCount);
+    animateNumber('heroSpeciesCount', speciesCount + '+');
+
+    // Animate main stats
+    animateNumber('statsParksCount', parksCount);
+    animateNumber('statsSpeciesCount', speciesCount + '+');
+    animateNumber('statsTrailsCount', '45+');
+}
+
+function animateNumber(elementId, targetValue) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    const isPlus = targetValue.includes('+');
+    const numericValue = parseInt(targetValue.replace('+', ''));
+
+    let current = 0;
+    const increment = numericValue / 50; // 50 frames for smooth animation
+    const duration = 1000; // 1 second
+    const step = duration / 50;
+
+    const timer = setInterval(() => {
+        current += increment;
+        if (current >= numericValue) {
+            current = numericValue;
+            clearInterval(timer);
+        }
+        element.textContent = Math.floor(current) + (isPlus ? '+' : '');
+    }, step);
+}
+
+function loadFeaturedParksEnhanced(parks) {
+    const container = document.getElementById('featuredParksGrid');
+    if (!container) return;
+
+    // Get random featured parks
+    const featured = parks.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+    let html = '';
+    featured.forEach((park, index) => {
+        const imageUrl = park.images && park.images.length > 0
+            ? park.images[0]
+            : `https://via.placeholder.com/400x250?text=${encodeURIComponent(park.name)}`;
+
+        const badgeColors = ['success', 'warning', 'info'];
+        const badgeColor = badgeColors[index % badgeColors.length];
+
+        html += `
+            <div class="featured-card" data-aos="fade-up" data-aos-delay="${(index + 1) * 100}">
+                <div class="featured-image-container">
+                    <img src="${imageUrl}" alt="${park.name}" class="featured-image" loading="lazy">
+                    <div class="featured-overlay"></div>
+                    <div class="featured-badge badge-${badgeColor}">
+                        <i class="fas fa-star"></i> À la une
+                    </div>
+                </div>
+                <div class="featured-content">
+                    <div class="featured-category">
+                        <i class="fas fa-tree"></i>
+                        Parc National
+                    </div>
+                    <h3 class="featured-title">${park.name}</h3>
+                    <p class="featured-description">${park.description.substring(0, 120)}...</p>
+                    <div class="featured-meta">
+                        <div class="featured-meta-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            ${park.governorate}
+                        </div>
+                        <div class="featured-meta-item">
+                            <i class="fas fa-ruler-combined"></i>
+                            ${park.area_km2} km²
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+
+    // Add click handlers for enhanced interaction
+    container.querySelectorAll('.featured-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const title = this.querySelector('.featured-title');
+            if (title) {
+                // Navigate to park page (you can enhance this with actual park ID)
+                const parkName = title.textContent.toLowerCase().replace(/\s+/g, '-');
+                window.location.href = `/parks/${parkName}`;
+            }
+        });
+    });
+
+    console.log(`Displayed ${featured.length} enhanced featured parks`);
+}
+
+function loadFeaturedSpeciesEnhanced(species) {
+    const container = document.getElementById('featuredSpeciesGrid');
+    if (!container) return;
+
+    // Get random featured species
+    const featured = species.sort(() => 0.5 - Math.random()).slice(0, 4);
+
+    let html = '';
+    featured.forEach((species, index) => {
+        const imageUrl = species.image_url || `https://via.placeholder.com/300x200?text=${encodeURIComponent(species.name)}`;
+        const typeIcon = species.type === 'animal' ? 'fa-paw' : 'fa-leaf';
+        const typeText = species.type === 'animal' ? 'Animal' : 'Plante';
+
+        html += `
+            <div class="featured-card" data-aos="fade-up" data-aos-delay="${(index + 1) * 100}">
+                <div class="featured-image-container">
+                    <img src="${imageUrl}" alt="${species.name}" class="featured-image" loading="lazy">
+                    <div class="featured-overlay"></div>
+                    <div class="featured-badge badge-info">
+                        <i class="fas ${typeIcon}"></i> ${typeText}
+                    </div>
+                </div>
+                <div class="featured-content">
+                    <div class="featured-category">
+                        <i class="fas fa-dna"></i>
+                        ${species.scientific_name}
+                    </div>
+                    <h4 class="featured-title" style="font-size: 1.25rem; margin-bottom: 0.5rem;">${species.name}</h4>
+                    <p class="featured-description" style="font-size: 0.9rem;">${species.description.substring(0, 100)}...</p>
+                    <div class="featured-meta" style="margin-top: 1rem;">
+                        <div class="featured-meta-item">
+                            <i class="fas fa-shield-alt"></i>
+                            ${species.conservation_status || 'Non évalué'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+    console.log(`Displayed ${featured.length} enhanced featured species`);
+}
+
+function showEnhancedError(title, message) {
+    // Enhanced error display with better styling
+    const container = document.querySelector('.main-content');
+    if (container) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+            z-index: 10000;
+            max-width: 400px;
+            animation: slideInFromRight 0.5s ease;
+        `;
+        errorDiv.innerHTML = `
+            <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                <div style="font-size: 1.5rem;">⚠️</div>
+                <div>
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 600;">${title}</h3>
+                    <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">${message}</p>
+                    <button onclick="this.parentElement.parentElement.parentElement.remove()"
+                            style="margin-top: 1rem; background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(errorDiv);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (errorDiv.parentElement) {
+                errorDiv.remove();
+            }
+        }, 5000);
+    }
+}
+
+// Add particle effect on hover for interactive elements
+document.addEventListener('mouseover', function(e) {
+    if (e.target.closest('.featured-card, .quick-action-enhanced, .stat-card-interactive')) {
+        // Add subtle glow effect
+        e.target.closest('.featured-card, .quick-action-enhanced, .stat-card-interactive').style.boxShadow =
+            '0 20px 40px rgba(102, 126, 234, 0.2), 0 0 20px rgba(102, 126, 234, 0.1)';
+    }
+});
+
+document.addEventListener('mouseout', function(e) {
+    if (e.target.closest('.featured-card, .quick-action-enhanced, .stat-card-interactive')) {
+        // Reset shadow
+        e.target.closest('.featured-card, .quick-action-enhanced, .stat-card-interactive').style.boxShadow = '';
+    }
+});
+
+// Performance optimization - lazy load images
+if ('IntersectionObserver' in window) {
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                    img.removeAttribute('data-src');
+                    observer.unobserve(img);
+                }
+            }
+        });
+    });
+
+    document.querySelectorAll('img[data-src]').forEach(img => imageObserver.observe(img));
+}
+
+console.log('Enhanced homepage JavaScript loaded successfully!');
 </script>
+
+<style>
+/* Additional enhanced styles */
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.animate-in {
+    animation: fadeInScale 0.6s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Enhanced accessibility */
+@media (prefers-contrast: high) {
+    .hero-cta-primary,
+    .hero-cta-secondary {
+        border: 2px solid currentColor;
+    }
+}
+
+/* Print styles */
+@media print {
+    .hero-scroll-hint,
+    .scroll-to-top,
+    .hero-cta-buttons {
+        display: none !important;
+    }
+}
+</style>
 {% endblock %}

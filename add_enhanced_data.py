@@ -7,7 +7,7 @@ Adds badges, sample users, and gamification data
 from datetime import datetime, timezone, timedelta
 import random
 from models import *
-from database import engine, init_db
+from database import engine,, get_engine init_db
 from sqlmodel import Session, select
 
 
@@ -157,7 +157,7 @@ def seed_badges():
         }
     ]
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         for badge_data in badges_data:
             # Check if badge already exists
             existing = session.exec(
@@ -227,7 +227,7 @@ def seed_sample_users():
         }
     ]
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         for user_data in users_data:
             # Check if user already exists
             existing = session.exec(
@@ -347,7 +347,7 @@ def seed_sample_sightings():
         }
     ]
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         for sighting_data in sightings_data:
             # Check if sighting already exists (avoid duplicates)
             existing = session.exec(
