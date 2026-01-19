@@ -426,11 +426,13 @@
             document.querySelector('.container').insertBefore(errorDiv, document.getElementById('map'));
         }
 
-        // Handle map loading errors
-        map.on('error', function(e) {
-            console.error('Map error:', e);
-            showError('Error loading map tiles. Please check your internet connection.');
-        });
+        // Handle map loading errors (only if map is initialized)
+        if (map) {
+            map.on('error', function(e) {
+                console.error('Map error:', e);
+                showError('Error loading map tiles. Please check your internet connection.');
+            });
+        }
     </script>
 </body>
 </html>

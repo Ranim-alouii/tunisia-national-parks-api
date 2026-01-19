@@ -61,7 +61,7 @@ class UIUtils {
         card.className = 'card hover-lift';
         card.innerHTML = `
             <div class="zoom-container">
-                <img src="${park.images && park.images.length > 0 ? park.images[0] : '/static/images/placeholder-park.jpg'}"
+                <img src="${park.images && park.images.length > 0 ? park.images[0] : 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=500'}"
                      alt="${park.name}" class="card-image">
             </div>
             <div class="card-content">
@@ -84,7 +84,7 @@ class UIUtils {
         card.className = 'card hover-lift';
         card.innerHTML = `
             <div class="zoom-container">
-                <img src="${species.image_url || '/static/images/placeholder-species.jpg'}"
+                <img src="${species.image_url || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=500'}"
                      alt="${species.name}" style="width: 100%; height: 200px; object-fit: cover;">
             </div>
             <div class="card-content">

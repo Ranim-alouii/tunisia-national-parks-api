@@ -423,7 +423,9 @@ async function loadTrails() {
                     ...trail,
                     parkName: park.name,
                     parkId: park.id,
-                    parkGovernorate: park.governorate
+                    parkGovernorate: park.governorate,
+                    park_latitude: park.latitude,
+                    park_longitude: park.longitude
                 }));
             } catch (error) {
                 console.error(`Error loading trails for park ${park.name}:`, error);
@@ -592,7 +594,7 @@ function displayTrails(trails) {
                         <span><strong>${trail.trail_type || 'Nature'}</strong></span>
                     </div>
                 </div>
-                <button onclick="event.stopPropagation(); showTrailModal(trail)" class="btn btn-primary" style="width: 100%; margin-top: var(--spacing-md); cursor: pointer;">
+                <button onclick="event.stopPropagation(); showTrailModalById(${trail.id})" class="btn btn-primary" style="width: 100%; margin-top: var(--spacing-md); cursor: pointer;">
                     <i class="fas fa-eye"></i> Voir les Détails
                 </button>
             </div>
@@ -643,6 +645,13 @@ function showTrailModal(trail) {
     // Show modal
     document.getElementById('trailModal').classList.add('active');
     document.body.style.overflow = 'hidden';
+}
+
+function showTrailModalById(id) {
+    const trail = allTrails.find(t => t.id == id);
+    if (trail) {
+        showTrailModal(trail);
+    }
 }
 
 function closeTrailModal() {
@@ -697,8 +706,23 @@ function viewOnMap() {
 }
 
 function getDirections() {
-    // This would get directions to the trailhead
-    alert('Fonctionnalité d\'itinéraire à implémenter');
+    // Get the current trail from the modal
+    const trailName = document.getElementById('modalTrailName').textContent;
+    const trail = allTrails.find(t => t.name === trailName);
+
+    if (trail && trail.park_latitude && trail.park_longitude) {
+        // Use park coordinates for directions
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${trail.park_latitude},${trail.park_longitude}&travelmode=driving`;
+        window.open(url, '_blank');
+    } else if (trail) {
+        // Fallback to park name if coordinates not available
+        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trail.parkName + ' Tunisie')}`;
+        window.open(url, '_blank');
+    } else {
+        // Fallback to search for the trail name
+        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trailName + ' Tunisie')}`;
+        window.open(url, '_blank');
+    }
 }
 
 function updateLoadMoreButton() {

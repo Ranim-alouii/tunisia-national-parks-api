@@ -1266,28 +1266,28 @@
         <div class="hero-stats-grid" data-aos="fade-left">
             <div class="hero-stat-card featured">
                 <div class="hero-stat-sparkle">✨</div>
-                <div class="hero-stat-number" id="heroParksCount">17</div>
+                <div class="hero-stat-number" id="heroParksCount" data-count-up="17">17</div>
                 <div class="hero-stat-label">Parcs Magiques</div>
                 <div class="hero-stat-icon">🏞️</div>
             </div>
 
             <div class="hero-stat-card">
                 <div class="hero-stat-sparkle">🦋</div>
-                <div class="hero-stat-number" id="heroSpeciesCount">250+</div>
+                <div class="hero-stat-number" id="heroSpeciesCount" data-count-up="250">250+</div>
                 <div class="hero-stat-label">Créatures</div>
                 <div class="hero-stat-icon">🦋</div>
             </div>
 
             <div class="hero-stat-card">
                 <div class="hero-stat-sparkle">🌍</div>
-                <div class="hero-stat-number">150k</div>
+                <div class="hero-stat-number" data-count-up="150000">150k</div>
                 <div class="hero-stat-label">Hectares</div>
                 <div class="hero-stat-icon">🌍</div>
             </div>
 
             <div class="hero-stat-card">
                 <div class="hero-stat-sparkle">🥾</div>
-                <div class="hero-stat-number">45+</div>
+                <div class="hero-stat-number" data-count-up="45">45+</div>
                 <div class="hero-stat-label">Sentiers</div>
                 <div class="hero-stat-icon">🥾</div>
             </div>
@@ -1362,28 +1362,28 @@
         <div class="stats-grid-interactive">
             <div class="stat-card-interactive featured" data-aos="zoom-in" data-aos-delay="100">
                 <div class="stat-icon-interactive">🏞️</div>
-                <div class="stat-number-interactive" id="statsParksCount">17</div>
+                <div class="stat-number-interactive" id="statsParksCount" data-count-up="17">17</div>
                 <div class="stat-label-interactive">Parcs Nationaux</div>
                 <div class="stat-sparkle-interactive">✨</div>
             </div>
 
             <div class="stat-card-interactive" data-aos="zoom-in" data-aos-delay="200">
                 <div class="stat-icon-interactive">🦋</div>
-                <div class="stat-number-interactive" id="statsSpeciesCount">400+</div>
+                <div class="stat-number-interactive" id="statsSpeciesCount" data-count-up="400">400+</div>
                 <div class="stat-label-interactive">Espèces Protégées</div>
                 <div class="stat-sparkle-interactive">🦋</div>
             </div>
 
             <div class="stat-card-interactive" data-aos="zoom-in" data-aos-delay="300">
                 <div class="stat-icon-interactive">🥾</div>
-                <div class="stat-number-interactive" id="statsTrailsCount">45+</div>
+                <div class="stat-number-interactive" id="statsTrailsCount" data-count-up="45">45+</div>
                 <div class="stat-label-interactive">Sentiers de Randonnée</div>
                 <div class="stat-sparkle-interactive">🥾</div>
             </div>
 
             <div class="stat-card-interactive" data-aos="zoom-in" data-aos-delay="400">
                 <div class="stat-icon-interactive">🌍</div>
-                <div class="stat-number-interactive">150k</div>
+                <div class="stat-number-interactive" data-count-up="150000">150k</div>
                 <div class="stat-label-interactive">Hectares Protégés</div>
                 <div class="stat-sparkle-interactive">🌍</div>
             </div>
@@ -1551,23 +1551,61 @@ async function loadEnhancedHomepageData() {
         console.log('Loading enhanced homepage data...');
 
         // Load parks data with error handling
-        const parksResponse = await fetch('/api/parks');
+        const parksResponse = await fetch('/api/parks?limit=6');
         if (!parksResponse.ok) {
             throw new Error(`Parks API error: ${parksResponse.status}`);
         }
-        const parks = await parksResponse.json();
+        const parksData = await parksResponse.json();
+        console.log('Raw parks response:', parksData);
+
+        // Handle different response formats
+        let parks = [];
+        if (Array.isArray(parksData)) {
+            parks = parksData;
+        } else if (parksData && Array.isArray(parksData.results)) {
+            parks = parksData.results;
+        } else if (parksData && parksData.data && Array.isArray(parksData.data)) {
+            parks = parksData.data;
+        }
+
+        // Fallback data if API returns empty
+        if (parks.length === 0) {
+            console.log('Using fallback parks data');
+            parks = getFallbackParks();
+        }
+
         console.log(`Loaded ${parks.length} parks`);
 
         // Load species data with error handling
-        const speciesResponse = await fetch('/api/species');
+        const speciesResponse = await fetch('/api/species?limit=6');
         if (!speciesResponse.ok) {
             throw new Error(`Species API error: ${speciesResponse.status}`);
         }
-        const species = await speciesResponse.json();
+        const speciesData = await speciesResponse.json();
+        console.log('Raw species response:', speciesData);
+
+        // Handle different response formats
+        let species = [];
+        if (Array.isArray(speciesData)) {
+            species = speciesData;
+        } else if (speciesData && Array.isArray(speciesData.results)) {
+            species = speciesData.results;
+        } else if (speciesData && speciesData.data && Array.isArray(speciesData.data)) {
+            species = speciesData.data;
+        }
+
+        // Fallback data if API returns empty
+        if (species.length === 0) {
+            console.log('Using fallback species data');
+            species = getFallbackSpecies();
+        }
+
         console.log(`Loaded ${species.length} species`);
 
-        // Update stats with animations
-        updateStatsWithAnimation(parks.length, species.length);
+        // Update stats with animations - wait for DOM to be ready
+        setTimeout(() => {
+            updateStatsWithAnimation(parks.length, species.length);
+        }, 100);
 
         // Load featured content with enhanced UI
         loadFeaturedParksEnhanced(parks);
@@ -1577,19 +1615,43 @@ async function loadEnhancedHomepageData() {
 
     } catch (error) {
         console.error('Error loading enhanced homepage data:', error);
-        showEnhancedError('Erreur de chargement des données', error.message);
+        // Use fallback data on error
+        console.log('Using fallback data due to API error');
+        const fallbackParks = getFallbackParks();
+        const fallbackSpecies = getFallbackSpecies();
+
+        updateStatsWithAnimation(fallbackParks.length, fallbackSpecies.length);
+        loadFeaturedParksEnhanced(fallbackParks);
+        loadFeaturedSpeciesEnhanced(fallbackSpecies);
+
+        showEnhancedError('Erreur de chargement des données', 'Utilisation des données de démonstration');
     }
 }
 
-function updateStatsWithAnimation(parksCount, speciesCount) {
-    // Animate hero stats
-    animateNumber('heroParksCount', parksCount);
-    animateNumber('heroSpeciesCount', speciesCount + '+');
+function updateStatsWithAnimation(parksCount, speciesCount, maxRetries = 3) {
+    const animateWithRetry = (elementId, targetValue, retryCount = 0) => {
+        const element = document.getElementById(elementId);
+        if (!element) {
+            if (retryCount < maxRetries) {
+                setTimeout(() => animateWithRetry(elementId, targetValue, retryCount + 1), 200);
+            } else {
+                console.warn(`animateNumber: Element ${elementId} not found after ${maxRetries} retries`);
+            }
+            return;
+        }
 
-    // Animate main stats
-    animateNumber('statsParksCount', parksCount);
-    animateNumber('statsSpeciesCount', speciesCount + '+');
-    animateNumber('statsTrailsCount', '45+');
+        // Start the animation
+        animateNumber(element, targetValue);
+    };
+
+    // Animate hero stats with retries
+    animateWithRetry('heroParksCount', parksCount);
+    animateWithRetry('heroSpeciesCount', speciesCount + '+');
+
+    // Animate main stats with retries
+    animateWithRetry('statsParksCount', parksCount);
+    animateWithRetry('statsSpeciesCount', speciesCount + '+');
+    animateWithRetry('statsTrailsCount', '45+');
 }
 
 function animateNumber(elementId, targetValue) {
@@ -1625,7 +1687,7 @@ function loadFeaturedParksEnhanced(parks) {
     featured.forEach((park, index) => {
         const imageUrl = park.images && park.images.length > 0
             ? park.images[0]
-            : `https://via.placeholder.com/400x250?text=${encodeURIComponent(park.name)}`;
+            : `https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=500&text=${encodeURIComponent(park.name)}`;
 
         const badgeColors = ['success', 'warning', 'info'];
         const badgeColor = badgeColors[index % badgeColors.length];
@@ -1687,7 +1749,7 @@ function loadFeaturedSpeciesEnhanced(species) {
 
     let html = '';
     featured.forEach((species, index) => {
-        const imageUrl = species.image_url || `https://via.placeholder.com/300x200?text=${encodeURIComponent(species.name)}`;
+        const imageUrl = species.image_url || `https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=500&text=${encodeURIComponent(species.name)}`;
         const typeIcon = species.type === 'animal' ? 'fa-paw' : 'fa-leaf';
         const typeText = species.type === 'animal' ? 'Animal' : 'Plante';
 
@@ -1796,6 +1858,130 @@ if ('IntersectionObserver' in window) {
     });
 
     document.querySelectorAll('img[data-src]').forEach(img => imageObserver.observe(img));
+}
+
+function getFallbackParks() {
+    return [
+        {
+            id: 1,
+            name: "Parc National de l'Ichkeul",
+            governorate: "Bizerte",
+            description: "Un site Ramsar exceptionnel avec des marais et des forêts, abritant une biodiversité remarquable.",
+            latitude: 37.1667,
+            longitude: 9.6833,
+            area_km2: 126,
+            images: ["https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=800"]
+        },
+        {
+            id: 2,
+            name: "Parc National de Boukornine",
+            governorate: "Ariana",
+            description: "Un parc urbain offrant des sentiers de randonnée et une vue panoramique sur Tunis.",
+            latitude: 36.8667,
+            longitude: 10.2000,
+            area_km2: 19.39,
+            images: ["https://images.unsplash.com/photo-1464822759844-d150f39b80aa?q=80&w=800"]
+        },
+        {
+            id: 3,
+            name: "Parc National de Zaghouan",
+            governorate: "Zaghouan",
+            description: "Célèbre pour ses sources d'eau et ses vestiges romains, offrant des paysages variés.",
+            latitude: 36.4000,
+            longitude: 10.1333,
+            area_km2: 25,
+            images: ["https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=800"]
+        },
+        {
+            id: 4,
+            name: "Parc National de Chambi",
+            governorate: "Kasserine",
+            description: "Le plus haut sommet de Tunisie avec une flore alpine unique et des sentiers de randonnée.",
+            latitude: 35.1667,
+            longitude: 8.7833,
+            area_km2: 67.19,
+            images: ["https://images.unsplash.com/photo-1464822759844-d150f39b80aa?q=80&w=800"]
+        },
+        {
+            id: 5,
+            name: "Parc National de Bou-Hedma",
+            governorate: "Sidi Bouzid",
+            description: "Un parc désertique avec des chotts et une biodiversité adaptée aux conditions arides.",
+            latitude: 34.8000,
+            longitude: 9.5500,
+            area_km2: 165,
+            images: ["https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=800"]
+        },
+        {
+            id: 6,
+            name: "Parc National de Jebel Zaghdoud",
+            governorate: "Béja",
+            description: "Une réserve naturelle avec des forêts de chênes et une faune diversifiée.",
+            latitude: 36.6500,
+            longitude: 9.2167,
+            area_km2: 20,
+            images: ["https://images.unsplash.com/photo-1464822759844-d150f39b80aa?q=80&w=800"]
+        }
+    ];
+}
+
+function getFallbackSpecies() {
+    return [
+        {
+            id: 1,
+            name: "Flamant Rose",
+            scientific_name: "Phoenicopterus roseus",
+            type: "animal",
+            description: "Un échassier majestueux avec un plumage rose, symbole de la biodiversité tunisienne.",
+            conservation_status: "Préoccupation mineure",
+            image_url: "https://images.unsplash.com/photo-1474511320723-9a56873867b5?q=80&w=800"
+        },
+        {
+            id: 2,
+            name: "Gazelle Dorcas",
+            scientific_name: "Gazella dorcas",
+            type: "animal",
+            description: "Une antilope gracieuse adaptée aux environnements arides du désert tunisien.",
+            conservation_status: "Vulnérable",
+            image_url: "https://images.unsplash.com/photo-1474511320723-9a56873867b5?q=80&w=800"
+        },
+        {
+            id: 3,
+            name: "Aigle de Bonelli",
+            scientific_name: "Aquila fasciata",
+            type: "animal",
+            description: "Un rapace majestueux avec une envergure impressionnante, chasseur des montagnes.",
+            conservation_status: "Préoccupation mineure",
+            image_url: "https://images.unsplash.com/photo-1474511320723-9a56873867b5?q=80&w=800"
+        },
+        {
+            id: 4,
+            name: "Hérisson d'Algérie",
+            scientific_name: "Atelerix algirus",
+            type: "animal",
+            description: "Un petit mammifère nocturne avec des piquants défensifs, commun en Tunisie.",
+            conservation_status: "Préoccupation mineure",
+            image_url: "https://images.unsplash.com/photo-1474511320723-9a56873867b5?q=80&w=800"
+        },
+        {
+            id: 5,
+            name: "Bouquetin des Alpes",
+            scientific_name: "Capra ibex",
+            type: "animal",
+            description: "Un caprin majestueux adapté aux terrains escarpés des montagnes tunisiennes.",
+            conservation_status: "Préoccupation mineure",
+            image_url: "https://images.unsplash.com/photo-1474511320723-9a56873867b5?q=80&w=800"
+        },
+        {
+            id: 6,
+            name: "Lynx Pardelle",
+            scientific_name: "Lynx pardinus",
+            type: "animal",
+            description: "Un félin rare et mystérieux, symbole de la préservation de la biodiversité.",
+            conservation_status: "En danger critique",
+            image_url: "https://images.unsplash.com/photo-1474511320723-9a56873867b5?q=80&w=800"
+        }
+    ];
 }
 
 console.log('Enhanced homepage JavaScript loaded successfully!');

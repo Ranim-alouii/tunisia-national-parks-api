@@ -72,31 +72,58 @@
 
         <!-- Parks Grid -->
         <div class="responsive-grid" id="parksGrid">
-            <!-- Skeleton loading -->
-            <div class="card-professional skeleton">
-                <div class="skeleton-image"></div>
-                <div class="card-content">
-                    <div class="skeleton-title"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text"></div>
+            {% if parks %}
+                {% for park in parks %}
+                    <div class="card-professional" data-aos="fade-up" data-aos-delay="{{ loop.index * 50 }}">
+                        <div class="zoom-container">
+                            <img src="{% if park.images and park.images[0] %}{{ park.images[0] }}{% else %}https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=400{% endif %}"
+                                 alt="Photo du parc {{ park.name }}" class="card-image" loading="lazy">
+                            {% if park.average_rating %}
+                                <div class="card-badge">
+                                    <i class="fas fa-star"></i> {{ park.average_rating }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title">{{ park.name }}</h3>
+                            <div class="card-meta">
+                                <span><i class="fas fa-map-marker-alt"></i> {{ park.governorate }}</span>
+                                <span><i class="fas fa-ruler-combined"></i> {{ park.area_km2 }} km²</span>
+                            </div>
+                            <p class="card-description">{{ park.description[:120] }}{% if park.description|length > 120 %}...{% endif %}</p>
+                            <a href="/parks/{{ park.id }}" class="btn btn-primary" style="width: 100%;">
+                                <i class="fas fa-arrow-right"></i> Découvrir
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <!-- Skeleton loading for initial load -->
+                <div class="card-professional skeleton">
+                    <div class="skeleton-image"></div>
+                    <div class="card-content">
+                        <div class="skeleton-title"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text"></div>
+                    </div>
                 </div>
-            </div>
-            <div class="card-professional skeleton">
-                <div class="skeleton-image"></div>
-                <div class="card-content">
-                    <div class="skeleton-title"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text"></div>
+                <div class="card-professional skeleton">
+                    <div class="skeleton-image"></div>
+                    <div class="card-content">
+                        <div class="skeleton-title"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text"></div>
+                    </div>
                 </div>
-            </div>
-            <div class="card-professional skeleton">
-                <div class="skeleton-image"></div>
-                <div class="card-content">
-                    <div class="skeleton-title"></div>
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text"></div>
+                <div class="card-professional skeleton">
+                    <div class="skeleton-image"></div>
+                    <div class="card-content">
+                        <div class="skeleton-title"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text"></div>
+                    </div>
                 </div>
-            </div>
+            {% endif %}
         </div>
 
         <!-- Load More -->
@@ -228,7 +255,7 @@ function displayParks(parks) {
 
         const imageUrl = park.images && park.images.length > 0
             ? park.images[0]
-            : 'https://via.placeholder.com/400x250?text=' + encodeURIComponent(park.name);
+            : 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=500&text=' + encodeURIComponent(park.name);
 
         card.innerHTML = `
             <div class="zoom-container">
@@ -351,7 +378,7 @@ function loadMoreParks() {
 
         const imageUrl = park.images && park.images.length > 0
             ? park.images[0]
-            : 'https://via.placeholder.com/400x250?text=' + encodeURIComponent(park.name);
+            : 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=500&text=' + encodeURIComponent(park.name);
 
         card.innerHTML = `
             <div class="zoom-container">

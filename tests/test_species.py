@@ -11,13 +11,14 @@ from models import SpeciesDB, ParkSpeciesLink
 class TestSpeciesAPI:
     """Test suite for species API endpoints"""
 
-    def test_list_species_empty(self, client: TestClient):
-        """Test listing species when database is empty"""
+    def test_list_species_populated(self, client: TestClient):
+        """Test listing species when database has seeded data"""
         response = client.get("/api/species")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
-        assert len(data) == 0
+        # Database now has 16 seeded species (6 animals + 10 plants)
+        assert len(data) >= 16
 
     def test_create_species(self, client: TestClient, auth_headers: dict, sample_species_data: dict):
         """Test creating a new species"""
@@ -148,21 +149,27 @@ class TestSpeciesAPI:
             response = client.post("/api/species", json=species, headers=auth_headers)
             assert response.status_code == 201
 
-        # Test filtering by type
+        # Test filtering by type (may include seeded data)
         response = client.get("/api/species?type=animal")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["name"] == "Lion"
-        assert data[0]["type"] == "animal"
+        # Should find at least the test animal (may include seeded data)
+        assert len(data) >= 1
+        # Find our test animal in the results
+        test_animal = next((s for s in data if s["name"] == "Lion"), None)
+        assert test_animal is not None
+        assert test_animal["type"] == "animal"
 
-        # Test filtering by type - plants
+        # Test filtering by type - plants (may include seeded data)
         response = client.get("/api/species?type=plant")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["name"] == "Oak Tree"
-        assert data[0]["type"] == "plant"
+        # Should find at least the test plant (may include seeded data)
+        assert len(data) >= 1
+        # Find our test plant in the results
+        test_plant = next((s for s in data if s["name"] == "Oak Tree"), None)
+        assert test_plant is not None
+        assert test_plant["type"] == "plant"
 
     def test_species_search(self, client: TestClient, auth_headers: dict):
         """Test species search functionality"""

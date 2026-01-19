@@ -8,57 +8,14 @@ from sqlmodel import Session, select
 
 from models import TrailDB, ParkDB
 from database import get_engine
+from schemas import Trail, TrailCreate, TrailUpdate
 
 # Create router
-router = APIRouter(prefix="/api/trails", tags=["Trails"])
-
-# ---------- TRAIL MODELS ----------
-
-from pydantic import BaseModel, Field
-
-class Trail(BaseModel):
-    id: int = Field(alias="trail_id")
-    park_id: int
-    name: str
-    description: str
-    difficulty: str
-    length_km: float
-    duration_hours: float
-    elevation_gain: int | None = None
-    trail_type: str
-    surface: str | None = None
-    highlights: List[str] | None = None
-
-    class Config:
-        from_attributes = True
-
-class TrailCreate(BaseModel):
-    park_id: int
-    name: str
-    description: str
-    difficulty: str
-    length_km: float
-    duration_hours: float
-    elevation_gain: int | None = None
-    trail_type: str
-    surface: str | None = None
-    highlights: List[str] | None = None
-
-class TrailUpdate(BaseModel):
-    park_id: int | None = None
-    name: str | None = None
-    description: str | None = None
-    difficulty: str | None = None
-    length_km: float | None = None
-    duration_hours: float | None = None
-    elevation_gain: int | None = None
-    trail_type: str | None = None
-    surface: str | None = None
-    highlights: List[str] | None = None
+router = APIRouter()
 
 # ---------- TRAIL ENDPOINTS ----------
 
-@router.get("", response_model=List[Trail])
+@router.get("")
 def list_trails(
     park_id: int | None = None,
     difficulty: str | None = None,
@@ -129,6 +86,14 @@ def get_trail(trail_id: int):
 @router.post("", response_model=Trail, status_code=201)
 def create_trail(trail_in: TrailCreate):
     """Create a new trail."""
+    # Validate difficulty level
+    allowed_difficulties = ["facile", "modéré", "difficile"]
+    if trail_in.difficulty not in allowed_difficulties:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid difficulty level. Must be one of: {', '.join(allowed_difficulties)}"
+        )
+
     with Session(get_engine()) as session:
         # Verify park exists
         park = session.get(ParkDB, trail_in.park_id)

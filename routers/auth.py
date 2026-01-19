@@ -11,53 +11,13 @@ from models import UserDB, ParkDB
 from database import get_engine
 from config import settings
 from utils import get_password_hash, verify_password, create_access_token, get_file_url
+from schemas import Token, User, UserInDB, UserCreate, UserLogin
+from dependencies import get_user, get_current_user
 
 # Create router
-router = APIRouter(prefix="/auth", tags=["Authentication"])
-
-# ---------- AUTH MODELS ----------
-
-from pydantic import BaseModel, Field
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class User(BaseModel):
-    username: str
-    full_name: str | None = None
-    disabled: bool | None = None
-
-class UserInDB(User):
-    hashed_password: str
-
-class UserCreate(BaseModel):
-    username: str = Field(min_length=3, max_length=50)
-    email: str = Field(pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-    password: str = Field(min_length=8)
-    full_name: str | None = Field(default=None, max_length=255)
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
+router = APIRouter()
 
 # ---------- AUTH FUNCTIONS ----------
-
-def get_user(username: str) -> UserInDB | None:
-    """Get user from database."""
-    with Session(get_engine()) as session:
-        user_db = session.exec(
-            select(UserDB).where(UserDB.username == username)
-        ).first()
-
-        if user_db:
-            return UserInDB(
-                username=user_db.username,
-                full_name=user_db.full_name,
-                disabled=not user_db.is_active,
-                hashed_password=user_db.hashed_password,
-            )
-    return None
 
 def authenticate_user(username: str, password: str) -> UserInDB | None:
     """Authenticate a user."""
@@ -67,34 +27,6 @@ def authenticate_user(username: str, password: str) -> UserInDB | None:
     if not verify_password(password, user.hashed_password):
         return None
     return user
-
-# ---------- DEPENDENCIES ----------
-
-from fastapi import HTTPException, Depends
-from jose import JWTError, jwt
-from fastapi.security import OAuth2PasswordBearer
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
-
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-    )
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    user = get_user(username)
-    if user is None or user.disabled:
-        raise credentials_exception
-    return User(username=user.username, full_name=user.full_name, disabled=user.disabled)
 
 # ---------- AUTH ENDPOINTS ----------
 
