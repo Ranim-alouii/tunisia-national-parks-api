@@ -5,7 +5,7 @@ Run with: python seed_more_species.py
 """
 
 from sqlmodel import Session, select
-from database import, get_engine engine
+from database import get_engine
 from models import ParkDB, SpeciesDB, ParkSpeciesLink
 
 # Comprehensive species data

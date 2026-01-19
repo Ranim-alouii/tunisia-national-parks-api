@@ -2,6 +2,54 @@
 
 {% block title %}Biodiversité - Parcs Nationaux de Tunisie{% endblock %}
 
+{% block extra_css %}
+<style>
+.species-description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin: 0.5rem 0;
+    font-weight: 400;
+}
+
+.danger-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--danger);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 0.25rem 0;
+}
+
+.danger-badge i {
+    font-size: 0.8rem;
+}
+
+.emergency-protocol {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--warning-light, rgba(245, 158, 11, 0.1));
+    border: 1px solid var(--warning, #f59e0b);
+    color: var(--warning-dark, #92400e);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    margin: 0.5rem 0;
+    line-height: 1.4;
+}
+
+.emergency-protocol i {
+    color: var(--warning, #f59e0b);
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="section">
     <div class="container">
@@ -45,7 +93,7 @@
                     <i class="fas fa-leaf" aria-hidden="true"></i>
                 </div>
                 <div class="stat-card-value" id="totalSpecies">0</div>
-                <div class="stat-card-label">Espèces Totales</div>
+                <div class="stat-card-label">Espèces Totales</div> 
             </div>
             <div class="stat-card">
                 <div class="stat-card-icon">
@@ -74,38 +122,23 @@
         <div class="grid grid-4" id="speciesGrid">
             {% if species %}
                 {% for specie in species %}
-                    <div class="card hover-lift" style="cursor: pointer;">
-                        <div style="position: relative;">
-                            <img src="{% if specie.image_url %}{{ specie.image_url }}{% else %}https://images.unsplash.com/photo-1474511320723-9a56873867b5?q=80&w=300{% endif %}"
-                                 alt="{{ specie.name }}" style="width: 100%; height: 200px; object-fit: cover; border-radius: var(--radius-lg) var(--radius-lg) 0 0;" loading="lazy">
-                            {% if specie.rarity == 'rare' or specie.rarity == 'très_rare' %}
-                                <div style="position: absolute; top: 10px; right: 10px; background: var(--accent); color: white; padding: 0.25rem 0.5rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600;">Rare</div>
-                            {% endif %}
-                        </div>
+                    <div class="species-card">
+                        <img src="{{ specie.image_url }}" alt="{{ specie.name }}">
                         <div class="card-content">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <span class="badge {{ specie.type == 'animal' and 'badge-info' or 'badge-success' }}">
-                                    <i class="fas fa-{{ specie.type == 'animal' and 'paw' or 'leaf' }}"></i>
-                                    {{ specie.type == 'animal' and 'Animal' or 'Plante' }}
-                                </span>
-                                {% if specie.rarity == 'rare' or specie.rarity == 'très_rare' %}
-                                    <i class="fas fa-star" style="color: var(--accent); margin-left: 0.5rem;"></i>
-                                {% endif %}
+                            <h3>{{ specie.name }}</h3>
+
+                            {% if specie.danger_level == 'high' %}
+                                <div class="danger-badge">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>Niveau de Danger Élevé</span>
+                                </div>
+                            {% endif %}
+                            <p class="description">{{ specie.description | truncate(100) }}</p>
+                            <div class="emergency-protocol">
+                                <i class="fas fa-medkit"></i>
+                                <span>Protocole: {{ specie.emergency_protocol | default('Aucune info', true) }}</span>
                             </div>
-                            <h4 style="margin: 0 0 0.25rem 0; font-size: 1.1rem;">{{ specie.name }}</h4>
-                            <p style="font-style: italic; color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 0.25rem 0;">{{ specie.scientific_name }}</p>
-                            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; margin: 0;">
-                                {{ specie.description[:120] }}{% if specie.description|length > 120 %}...{% endif %}
-                            </p>
-                            {% if specie.diet %}
-                                <p style="font-size: 0.75rem; color: var(--text-tertiary); margin: 0.25rem 0 0 0;"><i class="fas fa-utensils"></i> {{ specie.diet }}</p>
-                            {% endif %}
-                            {% if specie.habitat_type %}
-                                <p style="font-size: 0.75rem; color: var(--text-tertiary); margin: 0.25rem 0 0 0;"><i class="fas fa-map-marker-alt"></i> {{ specie.habitat_type }}</p>
-                            {% endif %}
-                            <a href="/species/{{ specie.id }}" class="btn btn-primary" style="width: 100%; margin-top: var(--spacing-sm);">
-                                <i class="fas fa-eye"></i> Voir les détails
-                            </a>
+                            <a href="/species/{{ specie.id }}" class="btn-details">Voir les détails</a>
                         </div>
                     </div>
                 {% endfor %}
@@ -196,6 +229,7 @@ async function loadSpecies() {
             }
         }
 
+        // Call updateStats INSIDE the fetch .then() block to ensure data is loaded
         updateStats();
 
         // Update filter button states
@@ -252,10 +286,29 @@ function setupEventListeners() {
 }
 
 function updateStats() {
+    console.log('STATS UPDATING NOW...'); // Cache-bust check
     const totalSpecies = allSpecies.length;
     const totalAnimals = allSpecies.filter(s => s.type === 'animal').length;
     const totalPlants = allSpecies.filter(s => s.type === 'plant').length;
-    const rareSpecies = allSpecies.filter(s => s.rarity === 'très_rare' || s.rarity === 'rare').length;
+
+    // Debug: Log what we're receiving
+    console.log('All species data:', allSpecies);
+    allSpecies.forEach(s => {
+        console.log('Species Rarity Check:', s.name, 'rarity:', s.rarity, 'conservation:', s.conservation_status);
+    });
+
+    const rareSpecies = allSpecies.filter(s => {
+        // Count species that are rare by rarity OR by conservation status
+        const isRareByRarity = s.rarity === 'très_rare' || s.rarity === 'rare';
+        const isRareByConservation = s.conservation_status === 'En danger critique' ||
+                                    s.conservation_status === 'Vulnérable' ||
+                                    s.conservation_status === 'en_danger';
+        console.log(`Species ${s.name}: isRareByRarity=${isRareByRarity}, isRareByConservation=${isRareByConservation}`);
+        return isRareByRarity || isRareByConservation;
+    }).length;
+
+    console.log('Final rare species count:', rareSpecies);
+    console.log('Final Rare Count:', rareSpecies); // Additional debug as requested
 
     document.getElementById('totalSpecies').textContent = totalSpecies;
     document.getElementById('totalAnimals').textContent = totalAnimals;
@@ -306,15 +359,26 @@ function displaySpecies(species) {
     }
 
     species.forEach(s => {
+        console.log('Species object:', s);
+
+        // Robust ID selection with fallback options
+        const speciesId = s.id || s.species_id || s._id;
+
+        // Safety check: skip species without valid ID
+        if (!speciesId) {
+            console.error('Missing ID for species:', s);
+            return; // Skip this species
+        }
+
         const card = document.createElement('div');
         card.className = 'card hover-lift';
-        card.style.cursor = 'pointer';
         card.onclick = () => showSpeciesModal(s);
 
-        const imageUrl = s.image_url || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=500';
+        const imageUrl = s.image_url || 'https://source.unsplash.com/featured/?' + s.name + ',nature';
 
         const isRare = s.rarity === 'très_rare' || s.rarity === 'rare';
         const rarityIcon = isRare ? '<i class="fas fa-star" style="color: var(--accent); margin-left: 0.5rem;"></i>' : '';
+        const dangerBadge = s.danger_level === 'high' ? '<span class="badge badge-danger" style="font-size: 0.7rem;"><i class="fas fa-exclamation-triangle"></i> Dangereux</span>' : '';
 
         card.innerHTML = `
             <div style="position: relative;">
@@ -329,13 +393,17 @@ function displaySpecies(species) {
                     </span>
                     ${rarityIcon}
                 </div>
+                ${dangerBadge}
                 <h4 style="margin: 0 0 0.25rem 0; font-size: 1.1rem;">${s.name}</h4>
                 <p style="font-style: italic; color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 0.25rem 0;">${s.scientific_name}</p>
-                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; margin: 0;">
-                    ${s.description.substring(0, 120)}...
-                </p>
+                <p class="species-description">${s.description ? s.description.substring(0, 100) + '...' : 'Description non disponible.'}</p>
+                ${s.danger_level === 'high' ? '<div class="danger-badge"><i class="fas fa-exclamation-triangle"></i><span>Niveau de Danger Élevé</span></div>' : ''}
                 ${s.diet ? `<p style="font-size: 0.75rem; color: var(--text-tertiary); margin: 0.25rem 0 0 0;"><i class="fas fa-utensils"></i> ${s.diet}</p>` : ''}
                 ${s.habitat_type ? `<p style="font-size: 0.75rem; color: var(--text-tertiary); margin: 0.25rem 0 0 0;"><i class="fas fa-map-marker-alt"></i> ${s.habitat_type}</p>` : ''}
+                ${s.emergency_protocol ? '<div class="emergency-protocol"><i class="fas fa-medkit"></i><span>Protocole d\'Urgence: ' + s.emergency_protocol.substring(0, 80) + '...</span></div>' : ''}
+                <a href="/species/${speciesId}" class="btn btn-primary" style="width: 100%; margin-top: var(--spacing-sm);">
+                    <i class="fas fa-eye"></i> Voir les détails
+                </a>
             </div>
         `;
 
@@ -343,170 +411,219 @@ function displaySpecies(species) {
     });
 }
 
-function showSpeciesModal(element) {
-    // Handle both cases: direct species object or DOM element with data attribute
-    let species;
+async function showSpeciesModal(element) {
+    // Get species ID from the element
+    let speciesId;
     if (element.dataset && element.dataset.species) {
-        // Called from template card with data-species attribute
-        species = JSON.parse(element.dataset.species);
+        // From server-side rendered card
+        const species = JSON.parse(element.dataset.species);
+        speciesId = species.id;
     } else {
-        // Called from JavaScript-generated card with species object
-        species = element;
+        // From JavaScript-generated card - get ID from element or species object
+        speciesId = element.id || element.species_id;
     }
 
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay active';
-    modal.innerHTML = `
-        <div class="modal-content species-modal">
-            <div class="modal-header">
-                <div class="species-header">
-                    <div class="species-title-section">
-                        <div class="species-icon">
-                            <i class="${species.type === 'animal' ? 'fas fa-paw' : 'fas fa-leaf'}"></i>
-                        </div>
-                        <div>
-                            <h2 class="species-name">${species.name}</h2>
-                            <p class="species-subtitle"><em>${species.scientific_name}</em></p>
-                            ${species.rarity === 'très_rare' || species.rarity === 'rare' ?
-                                '<div class="rarity-badge"><i class="fas fa-star"></i> Espèce Rare</div>' : ''}
-                        </div>
-                    </div>
-                    <button class="modal-close" onclick="closeModal()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
+    try {
+        // Fetch full species data from API
+        const response = await fetch(`/api/species/${speciesId}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch species data');
+        }
+        const species = await response.json();
 
-            <div class="modal-body">
-                <div class="species-hero">
-                    <img src="${species.image_url || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=500'}"
-                         alt="${species.name}" class="species-image">
-                    <div class="species-stats">
-                        <div class="stat-item">
-                            <div class="stat-icon">
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay active';
+
+        // Build danger badge if needed
+        const dangerBadge = species.danger_level === 'high' ?
+            '<div class="danger-badge" style="margin-top: 10px;"><i class="fas fa-exclamation-triangle"></i><span>Niveau de Danger Élevé</span></div>' : '';
+
+        modal.innerHTML = `
+            <div class="modal-content species-modal">
+                <div class="modal-header">
+                    <div class="species-header">
+                        <div class="species-title-section">
+                            <div class="species-icon">
                                 <i class="fas fa-${species.type === 'animal' ? 'paw' : 'leaf'}"></i>
                             </div>
-                            <div class="stat-text">
-                                <div class="stat-value">${species.type === 'animal' ? 'Faune' : 'Flore'}</div>
-                                <div class="stat-label">Type</div>
+                            <div>
+                                <h2 class="species-name">${species.name}</h2>
+                                <p class="species-subtitle"><em>${species.scientific_name}</em></p>
+                                ${species.rarity === 'très_rare' || species.rarity === 'rare' ?
+                                    '<div class="rarity-badge"><i class="fas fa-star"></i> Espèce Rare</div>' : ''}
+                                ${dangerBadge}
                             </div>
                         </div>
-                        <div class="stat-item">
-                            <div class="stat-icon">
-                                <i class="fas fa-${species.conservation_status === 'en_danger' ? 'exclamation-triangle' :
-                                                species.conservation_status === 'préoccupation_mineure' ? 'check-circle' : 'info-circle'}"></i>
-                            </div>
-                            <div class="stat-text">
-                                <div class="stat-value">${species.conservation_status || 'Non évalué'}</div>
-                                <div class="stat-label">Conservation</div>
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-icon">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div class="stat-text">
-                                <div class="stat-value">${species.activity_time || 'Variable'}</div>
-                                <div class="stat-label">Activité</div>
-                            </div>
-                        </div>
+                        <button class="modal-close" onclick="closeModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 </div>
 
-                <div class="species-content">
-                    <div class="content-section">
-                        <div class="section-header">
-                            <div class="section-icon">
-                                <i class="fas fa-info-circle"></i>
+                <div class="modal-body">
+                    <div class="species-hero">
+                        <img src="${species.image_url || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=500'}"
+                             alt="${species.name}" class="species-image">
+                        <div class="species-stats">
+                            <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-${species.type === 'animal' ? 'paw' : 'leaf'}"></i>
+                                </div>
+                                <div class="stat-text">
+                                    <div class="stat-value">${species.type === 'animal' ? 'Faune' : 'Flore'}</div>
+                                    <div class="stat-label">Type</div>
+                                </div>
                             </div>
-                            <h3>Description</h3>
+                            <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-${species.conservation_status === 'en_danger' ? 'exclamation-triangle' :
+                                                    species.conservation_status === 'préoccupation_mineure' ? 'check-circle' : 'info-circle'}"></i>
+                                </div>
+                                <div class="stat-text">
+                                    <div class="stat-value">${species.conservation_status || 'Non évalué'}</div>
+                                    <div class="stat-label">Conservation</div>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="stat-text">
+                                    <div class="stat-value">${species.activity_time || 'Variable'}</div>
+                                    <div class="stat-label">Activité</div>
+                                </div>
+                            </div>
                         </div>
-                        <p class="section-content">${species.description}</p>
                     </div>
 
-                    ${species.habitat_type ? `
-                    <div class="content-section">
-                        <div class="section-header">
-                            <div class="section-icon">
-                                <i class="fas fa-map-marker-alt"></i>
+                    <div class="species-content">
+                        <div class="content-section">
+                            <div class="section-header">
+                                <div class="section-icon">
+                                    <i class="fas fa-info-circle"></i>
+                                </div>
+                                <h3>Description</h3>
+                            </div>
+                            <p class="section-content">${species.description || 'Description non disponible.'}</p>
+                        </div>
+
+                        ${species.habitat_type ? `
+                        <div class="content-section">
+                            <div class="section-header">
+                                <div class="section-icon">
+                                    <i class="fas fa-map-marker-alt"></i>
                             </div>
                             <h3>Habitat</h3>
                         </div>
                         <p class="section-content">${species.habitat_type}</p>
-                    </div>
-                    ` : ''}
+                        </div>
+                        ` : ''}
 
-                    ${species.threats ? `
-                    <div class="content-section warning">
-                        <div class="section-header">
-                            <div class="section-icon">
-                                <i class="fas fa-exclamation-triangle"></i>
+                        ${species.threats ? `
+                        <div class="content-section warning">
+                            <div class="section-header">
+                                <div class="section-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <h3>Menaces</h3>
                             </div>
-                            <h3>Menaces</h3>
+                            <p class="section-content">${species.threats}</p>
                         </div>
-                        <p class="section-content">${species.threats}</p>
-                    </div>
-                    ` : ''}
+                        ` : ''}
 
-                    ${species.protection_measures ? `
-                    <div class="content-section success">
-                        <div class="section-header">
-                            <div class="section-icon">
-                                <i class="fas fa-shield-alt"></i>
+                        ${species.protection_measures ? `
+                        <div class="content-section success">
+                            <div class="section-header">
+                                <div class="section-icon">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <h3>Mesures de Protection</h3>
                             </div>
-                            <h3>Mesures de Protection</h3>
+                            <p class="section-content">${species.protection_measures}</p>
                         </div>
-                        <p class="section-content">${species.protection_measures}</p>
-                    </div>
-                    ` : ''}
+                        ` : ''}
 
-                    ${species.safety_guidelines ? `
-                    <div class="content-section info">
-                        <div class="section-header">
-                            <div class="section-icon">
-                                <i class="fas fa-exclamation-circle"></i>
+                        ${species.safety_guidelines ? `
+                        <div class="content-section info">
+                            <div class="section-header">
+                                <div class="section-icon">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </div>
+                                <h3>Consignes de Sécurité</h3>
                             </div>
-                            <h3>Consignes de Sécurité</h3>
+                            <div class="section-content">
+                                ${species.safety_guidelines.split('\n').map(line => `<p>${line}</p>`).join('')}
+                            </div>
                         </div>
-                        <div class="section-content">
-                            ${species.safety_guidelines.split('\n').map(line => `<p>${line}</p>`).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
+                        ` : ''}
 
-                    ${species.medicinal_use ? `
-                    <div class="content-section medicinal">
-                        <div class="section-header">
-                            <div class="section-icon">
-                                <i class="fas fa-leaf"></i>
+                        ${species.emergency_protocol ? `
+                        <div class="content-section danger">
+                            <div class="section-header">
+                                <div class="section-icon">
+                                    <i class="fas fa-medkit"></i>
+                                </div>
+                                <h3>Protocole d'Urgence</h3>
                             </div>
-                            <h3>Usage Médicinal</h3>
+                            <p class="section-content">${species.emergency_protocol}</p>
                         </div>
-                        <div class="section-content">
-                            <div class="medicinal-warning">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <span>Consultez un professionnel de santé avant utilisation</span>
-                            </div>
-                            ${species.medicinal_use.split('\n').map(line => `<p>${line}</p>`).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
+                        ` : ''}
 
-                <div class="modal-footer">
-                    <button class="btn btn-outline" onclick="closeModal()">
-                        <i class="fas fa-times"></i> Fermer
-                    </button>
-                    <button class="btn btn-primary" onclick="shareSpecies('${species.name}', '${species.scientific_name}')">
-                        <i class="fas fa-share-alt"></i> Partager
-                    </button>
+                        ${species.medicinal_use ? `
+                        <div class="content-section medicinal">
+                            <div class="section-header">
+                                <div class="section-icon">
+                                    <i class="fas fa-leaf"></i>
+                                </div>
+                                <h3>Usage Médicinal</h3>
+                            </div>
+                            <div class="section-content">
+                                <div class="medicinal-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>Consultez un professionnel de santé avant utilisation</span>
+                                </div>
+                                ${species.medicinal_use.split('\n').map(line => `<p>${line}</p>`).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-outline" onclick="closeModal()">
+                            <i class="fas fa-times"></i> Fermer
+                        </button>
+                        <button class="btn btn-primary" onclick="shareSpecies('${species.name}', '${species.scientific_name}')">
+                            <i class="fas fa-share-alt"></i> Partager
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
 
-    document.body.appendChild(modal);
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+
+    } catch (error) {
+        console.error('Error loading species modal:', error);
+        // Fallback: show a simple error message
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay active';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Erreur</h3>
+                    <button class="modal-close" onclick="closeModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Impossible de charger les détails de l'espèce.</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden';
+    }
 }
 
 function closeModal() {
@@ -546,36 +663,7 @@ function updateLoadMoreButton() {
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
-    loadSpecies();
-
-    // Search functionality
-    const searchInput = document.getElementById('searchInput');
-    const searchBtn = document.getElementById('searchBtn');
-
-    searchInput.addEventListener('input', (e) => {
-        currentSearch = e.target.value;
-        applyFilters();
-    });
-
-    searchBtn.addEventListener('click', applyFilters);
-
-    // Filter tags
-    document.querySelectorAll('.filter-tag').forEach(tag => {
-        tag.addEventListener('click', () => {
-            document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
-            tag.classList.add('active');
-            currentFilter = tag.dataset.type;
-            applyFilters();
-        });
-    });
-
-    // Load more button
-    document.getElementById('loadMoreBtn').addEventListener('click', () => {
-        const currentCount = document.querySelectorAll('#speciesGrid .card').length;
-        const nextBatch = filteredSpecies.slice(currentCount, currentCount + 12);
-        displaySpecies(filteredSpecies.slice(0, currentCount + 12));
-        updateLoadMoreButton();
-    });
+    // Event listeners are set up in setupEventListeners() called from pageInit
 });
 </script>
 

@@ -42,21 +42,21 @@ class ParkUpdate(BaseModel):
 # ========== SPECIES SCHEMAS ==========
 
 class Species(BaseModel):
-    """Species response model"""
+    """Species response model - FIXED"""
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    species_id: int = Field(alias="id", serialization_alias="species_id")
+    # This line is the magic fix: it maps the DB name to the API name
+    id: int = Field(alias="species_id") 
     name: str
     type: Literal["animal", "plant"]
     scientific_name: str
     description: str
-    threats: str | None = None
-    protection_measures: str | None = None
-    safety_guidelines: str | None = None
-    medicinal_use: str | None = None
+    conservation_status: str | None = None
+    rarity: str | None = None
     image_url: str | None = None
-    park_ids: List[int]
-
+    # If your frontend needs park_ids, keep this:
+    park_ids: List[int] = []
+    
 class SpeciesCreate(BaseModel):
     """Species creation model"""
     name: str
@@ -66,6 +66,7 @@ class SpeciesCreate(BaseModel):
     threats: str = ""
     protection_measures: str = ""
     safety_guidelines: str = ""
+    emergency_protocol: str = ""
     medicinal_use: str | None = None
     image_url: str | None = None
     park_ids: List[int] = []
@@ -79,6 +80,7 @@ class SpeciesUpdate(BaseModel):
     threats: str | None = None
     protection_measures: str | None = None
     safety_guidelines: str | None = None
+    emergency_protocol: str | None = None
     medicinal_use: str | None = None
     image_url: str | None = None
     park_ids: List[int] | None = None

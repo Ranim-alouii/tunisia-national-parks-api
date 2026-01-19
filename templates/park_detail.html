@@ -383,7 +383,7 @@ async function loadSpecies() {
         }
 
         container.innerHTML = species.map(s => `
-            <a href="/species/${s.species_id}" class="species-link">
+            <a href="/species/${s.id}" class="species-link">
                 <div class="card hover-lift">
                     <img src="${s.image_url || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=500'}"
                          alt="${s.name}"
@@ -392,8 +392,10 @@ async function loadSpecies() {
                         <span class="badge ${s.type === 'animal' ? 'badge-info' : 'badge-success'}">
                             <i class="fas fa-${s.type === 'animal' ? 'paw' : 'leaf'}"></i>
                         </span>
+                        ${s.danger_level === 'high' ? '<span class="badge badge-danger" style="font-size: 0.7rem;"><i class="fas fa-exclamation-triangle"></i> Dangereux</span>' : ''}
                         <h5 style="margin-top: 0.5rem; margin-bottom: 0.25rem;">${s.name}</h5>
                         <p style="font-size: 0.75rem; font-style: italic; color: var(--text-secondary);">${s.scientific_name}</p>
+                        ${s.description ? `<p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">${s.description.substring(0, 80)}...</p>` : ''}
                     </div>
                 </div>
             </a>
@@ -630,7 +632,8 @@ async function loadWikipediaInfo() {
         const response = await fetch(`/api/parks/${parkId}/wikipedia`);
         const data = await response.json();
 
-        if (!data.wikipedia_info.title) {
+        // Add safety check for data structure
+        if (!data || !data.wikipedia_info || !data.wikipedia_info.title) {
             document.getElementById('wikipediaInfo').innerHTML = '<p style="color: var(--text-secondary);">Aucune information Wikipedia disponible pour ce parc.</p>';
             return;
         }
@@ -645,9 +648,9 @@ async function loadWikipediaInfo() {
                         <p style="color: var(--text-secondary); line-height: 1.6;">${info.extract}</p>
                     </div>
                 </div>
-                <a href="${info.url}" target="_blank" class="btn btn-primary">
+                ${info.url ? `<a href="${info.url}" target="_blank" class="btn btn-primary">
                     <i class="fas fa-external-link-alt"></i> Lire l'article complet sur Wikipedia
-                </a>
+                </a>` : ''}
             </div>
         `;
 

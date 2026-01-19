@@ -112,6 +112,7 @@ class SpeciesDB(SQLModel, table=True):
     danger_level: Optional[str] = Field(default=None, regex="^(none|low|medium|high)$", max_length=20)
     interaction_guide: Optional[str] = Field(default=None, max_length=2000)
     first_aid: Optional[str] = Field(default=None, max_length=2000)  # First aid for injuries/stings/allergic reactions
+    emergency_protocol: Optional[str] = Field(default=None, max_length=2000)  # Emergency response protocols
 
     # Multimedia with URL validation
     image_url: Optional[str] = Field(default=None, max_length=1000)
@@ -120,11 +121,7 @@ class SpeciesDB(SQLModel, table=True):
     video_url: Optional[str] = Field(default=None, max_length=1000)
 
     # Biological information
-    conservation_status: Optional[str] = Field(
-        default=None,
-        regex="^(endangered|vulnerable|least_concern|near_threatened)$",
-        max_length=50
-    )
+    conservation_status: Optional[str] = Field(default=None, max_length=50)
     habitat_type: Optional[str] = Field(default=None, max_length=100)
     diet: Optional[str] = Field(default=None, max_length=500)
     lifespan: Optional[str] = Field(default=None, max_length=100)
@@ -138,11 +135,7 @@ class SpeciesDB(SQLModel, table=True):
         regex="^(diurne|nocturne|crépusculaire)$",
         max_length=50
     )
-    rarity: Optional[str] = Field(
-        default=None,
-        regex="^(common|rare|very_rare)$",
-        max_length=20
-    )
+    rarity: Optional[str] = Field(default=None, max_length=20)
 
     # Database constraints and indexes
     __table_args__ = (

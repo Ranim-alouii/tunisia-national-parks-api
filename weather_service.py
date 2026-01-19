@@ -5,63 +5,143 @@ from config import settings
 
 async def get_weather_for_location(latitude: float, longitude: float) -> Optional[dict]:
     """
-    Get current weather for a location using OpenWeatherMap API
-    Falls back to mock data if API key is invalid or missing
+    Get current weather for a location using Open-Meteo API (no API key required)
+    Falls back to mock data if API call fails
     """
-    # For development, use mock data to ensure functionality works
-    # Comment out the next line to use real API when you have a valid key
-    return get_mock_weather_data(latitude, longitude)
-
-    # Uncomment below to use real API (requires valid API key)
-    # if not settings.OPENWEATHER_API_KEY or settings.OPENWEATHER_API_KEY in ['demo_key_disabled', 'your_openweather_api_key_here'] or len(settings.OPENWEATHER_API_KEY or '') < 10:
-    #     # Return mock weather data for development
-    #     return get_mock_weather_data(latitude, longitude)
-    
-    url = "https://api.openweathermap.org/data/2.5/weather"
-    params = {
-        "lat": latitude,
-        "lon": longitude,
-        "appid": settings.OPENWEATHER_API_KEY,
-        "units": "metric",  # Celsius
-        "lang": "fr"  # French language
-    }
-    
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, params=params, timeout=10.0)
+        # Use Open-Meteo API which doesn't require an API key
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "current_weather": True,
+            "timezone": "Africa/Tunis",
+            "hourly": "temperature_2m,relative_humidity_2m,wind_speed_10m",
+            "daily": "temperature_2m_max,temperature_2m_min",
+            "forecast_days": 1
+        }
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url, params=params)
             response.raise_for_status()
             data = response.json()
-            
-            # Format the weather data
+
+            current = data["current_weather"]
+            hourly = data.get("hourly", {})
+            daily = data.get("daily", {})
+
+            # Map weather codes to descriptions and icons
+            weather_info = map_weather_code(current.get("weathercode", 0))
+
+            # Get current hour data
+            current_time = current["time"]
+            hour_index = None
+            if hourly.get("time"):
+                try:
+                    hour_index = hourly["time"].index(current_time)
+                except ValueError:
+                    hour_index = 0
+
+            humidity = 50  # default
+            if hour_index is not None and hourly.get("relative_humidity_2m"):
+                humidity = int(hourly["relative_humidity_2m"][hour_index])
+
+            wind_speed = 0.0  # default
+            if hour_index is not None and hourly.get("wind_speed_10m"):
+                wind_speed = float(hourly["wind_speed_10m"][hour_index])
+
+            # Get daily min/max
+            temp_min = temp_max = current["temperature"]
+            if daily.get("temperature_2m_min") and daily.get("temperature_2m_max"):
+                temp_min = float(daily["temperature_2m_min"][0])
+                temp_max = float(daily["temperature_2m_max"][0])
+
             return {
-                "temperature": round(data["main"]["temp"]),
-                "feels_like": round(data["main"]["feels_like"]),
-                "temp_min": round(data["main"]["temp_min"]),
-                "temp_max": round(data["main"]["temp_max"]),
-                "humidity": data["main"]["humidity"],
-                "pressure": data["main"]["pressure"],
-                "description": data["weather"][0]["description"],
-                "icon": data["weather"][0]["icon"],
-                "icon_url": f"https://openweathermap.org/img/wn/{data['weather'][0]['icon']}@2x.png",
-                "wind_speed": round(data["wind"]["speed"] * 3.6, 1),  # Convert m/s to km/h
-                "wind_direction": data["wind"].get("deg", 0),
-                "clouds": data["clouds"]["all"],
-                "visibility": data.get("visibility", 0) / 1000,  # Convert to km
-                "sunrise": data["sys"]["sunrise"],
-                "sunset": data["sys"]["sunset"],
-                "timezone": data["timezone"],
-                "city_name": data.get("name", ""),
+                "temperature": round(current["temperature"]),
+                "feels_like": round(current["temperature"]),  # Open-Meteo doesn't provide feels_like
+                "temp_min": round(temp_min),
+                "temp_max": round(temp_max),
+                "humidity": humidity,
+                "pressure": 1013,  # Default pressure, Open-Meteo doesn't provide current pressure
+                "description": weather_info["description"],
+                "icon": weather_info["icon"],
+                "icon_url": weather_info["icon_url"],
+                "wind_speed": round(wind_speed, 1),
+                "wind_direction": current.get("winddirection", 0),
+                "clouds": 0,  # Open-Meteo doesn't provide cloud cover in current_weather
+                "visibility": 10.0,  # Default visibility
+                "sunrise": None,  # Open-Meteo doesn't provide sunrise/sunset in current_weather
+                "sunset": None,
+                "timezone": 3600,  # UTC+1 for Tunisia
+                "city_name": get_city_name_from_coords(latitude, longitude),
+                "_source": "open-meteo"
             }
-    except httpx.HTTPError as e:
-        return {
-            "error": "Failed to fetch weather data",
-            "message": str(e)
-        }
+
     except Exception as e:
-        return {
-            "error": "Unexpected error",
-            "message": str(e)
-        }
+        # Fallback to mock data if API fails
+        print(f"Open-Meteo API failed: {e}, falling back to mock data")
+        return get_mock_weather_data(latitude, longitude)
+
+
+def map_weather_code(code: int) -> dict:
+    """
+    Map Open-Meteo weather codes to descriptions and icons
+    """
+    weather_codes = {
+        0: {"description": "ciel dégagé", "icon": "01d", "icon_url": "https://openweathermap.org/img/wn/01d@2x.png"},
+        1: {"description": "principalement dégagé", "icon": "01d", "icon_url": "https://openweathermap.org/img/wn/01d@2x.png"},
+        2: {"description": "partiellement nuageux", "icon": "02d", "icon_url": "https://openweathermap.org/img/wn/02d@2x.png"},
+        3: {"description": "couvert", "icon": "03d", "icon_url": "https://openweathermap.org/img/wn/03d@2x.png"},
+        45: {"description": "brume", "icon": "50d", "icon_url": "https://openweathermap.org/img/wn/50d@2x.png"},
+        48: {"description": "brume givante", "icon": "50d", "icon_url": "https://openweathermap.org/img/wn/50d@2x.png"},
+        51: {"description": "bruine légère", "icon": "09d", "icon_url": "https://openweathermap.org/img/wn/09d@2x.png"},
+        53: {"description": "bruine modérée", "icon": "09d", "icon_url": "https://openweathermap.org/img/wn/09d@2x.png"},
+        55: {"description": "bruine dense", "icon": "09d", "icon_url": "https://openweathermap.org/img/wn/09d@2x.png"},
+        56: {"description": "bruine verglaçante légère", "icon": "09d", "icon_url": "https://openweathermap.org/img/wn/09d@2x.png"},
+        57: {"description": "bruine verglaçante dense", "icon": "09d", "icon_url": "https://openweathermap.org/img/wn/09d@2x.png"},
+        61: {"description": "pluie légère", "icon": "10d", "icon_url": "https://openweathermap.org/img/wn/10d@2x.png"},
+        63: {"description": "pluie modérée", "icon": "10d", "icon_url": "https://openweathermap.org/img/wn/10d@2x.png"},
+        65: {"description": "pluie forte", "icon": "10d", "icon_url": "https://openweathermap.org/img/wn/10d@2x.png"},
+        66: {"description": "pluie verglaçante légère", "icon": "10d", "icon_url": "https://openweathermap.org/img/wn/10d@2x.png"},
+        67: {"description": "pluie verglaçante forte", "icon": "10d", "icon_url": "https://openweathermap.org/img/wn/10d@2x.png"},
+        71: {"description": "neige légère", "icon": "13d", "icon_url": "https://openweathermap.org/img/wn/13d@2x.png"},
+        73: {"description": "neige modérée", "icon": "13d", "icon_url": "https://openweathermap.org/img/wn/13d@2x.png"},
+        75: {"description": "neige forte", "icon": "13d", "icon_url": "https://openweathermap.org/img/wn/13d@2x.png"},
+        77: {"description": "grains de neige", "icon": "13d", "icon_url": "https://openweathermap.org/img/wn/13d@2x.png"},
+        80: {"description": "averse légère", "icon": "09d", "icon_url": "https://openweathermap.org/img/wn/09d@2x.png"},
+        81: {"description": "averse modérée", "icon": "09d", "icon_url": "https://openweathermap.org/img/wn/09d@2x.png"},
+        82: {"description": "averse violente", "icon": "09d", "icon_url": "https://openweathermap.org/img/wn/09d@2x.png"},
+        85: {"description": "averse de neige légère", "icon": "13d", "icon_url": "https://openweathermap.org/img/wn/13d@2x.png"},
+        86: {"description": "averse de neige forte", "icon": "13d", "icon_url": "https://openweathermap.org/img/wn/13d@2x.png"},
+        95: {"description": "orage", "icon": "11d", "icon_url": "https://openweathermap.org/img/wn/11d@2x.png"},
+        96: {"description": "orage avec grêle légère", "icon": "11d", "icon_url": "https://openweathermap.org/img/wn/11d@2x.png"},
+        99: {"description": "orage avec grêle forte", "icon": "11d", "icon_url": "https://openweathermap.org/img/wn/11d@2x.png"},
+    }
+
+    return weather_codes.get(code, {"description": "conditions météorologiques inconnues", "icon": "01d", "icon_url": "https://openweathermap.org/img/wn/01d@2x.png"})
+
+
+def get_city_name_from_coords(latitude: float, longitude: float) -> str:
+    """
+    Get approximate city name from coordinates (simplified)
+    """
+    # Simple coordinate-to-city mapping for Tunisia
+    if 37.0 <= latitude <= 37.5 and 9.5 <= longitude <= 10.0:
+        return "Bizerte"
+    elif 36.7 <= latitude <= 37.0 and 9.0 <= longitude <= 9.5:
+        return "Tunis Nord"
+    elif 36.5 <= latitude <= 36.9 and 10.0 <= longitude <= 10.5:
+        return "Ariana"
+    elif 36.0 <= latitude <= 36.5 and 9.5 <= longitude <= 10.5:
+        return "Ben Arous"
+    elif 35.5 <= latitude <= 36.0 and 8.5 <= longitude <= 9.5:
+        return "Kasserine"
+    elif 34.5 <= latitude <= 35.5 and 8.5 <= longitude <= 9.5:
+        return "Sidi Bouzid"
+    elif 33.5 <= latitude <= 34.5 and 7.5 <= longitude <= 8.5:
+        return "Tozeur"
+    else:
+        return "Tunisie"
 
 
 async def get_weather_forecast(latitude: float, longitude: float, days: int = 5) -> Optional[dict]:

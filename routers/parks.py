@@ -324,11 +324,171 @@ async def get_park_weather(park_id: int):
         }
 
 @router.get("/{park_id}/unsplash-images")
-def get_park_unsplash_images(park_id: int, count: int = 4):
-    """Get Unsplash images for a park."""
-    # For demo purposes, return empty array instead of trying to fetch from API
-    # This prevents the "data.map is not a function" error
-    return []
+async def get_park_unsplash_images(park_id: int, count: int = 4):
+    """Get Unsplash images for a park using park name as search keyword."""
+    try:
+        # Get park information
+        with Session(get_engine()) as session:
+            park = session.get(ParkDB, park_id)
+            if not park:
+                return []
+
+            park_name = park.name
+
+        # Create search query from park name - use the official Unsplash source format
+        # Remove common words and extract key terms
+        name_parts = park_name.lower().replace('parc national', '').replace('parc', '').replace('de', '').replace("d'", '').strip().split()
+
+        # Create search query with park name and Tunisia/nature keywords
+        search_terms = name_parts[:2] + ['tunisie', 'nature']  # Limit to first 2 name parts to avoid too long URLs
+        search_query = ','.join(search_terms)
+
+        # Use official Unsplash source.unsplash.com format (no API key needed)
+        images = []
+        for i in range(min(count, 4)):  # Limit to 4 images max
+            # Create different variations for each image
+            variations = ['', '?featured', '?sig=1', '?sig=2']
+            variation = variations[i % len(variations)]
+
+            image_url = f"https://source.unsplash.com/featured/?{search_query}{variation}"
+            images.append({
+                "url": image_url,
+                "alt_description": f"Vue du {park_name} - Image {i+1}",
+                "description": f"Paysage naturel du {park_name} en Tunisie",
+                "photographer": "Unsplash Community",
+                "unsplash_url": image_url  # Same URL since we can't get the original photo URL
+            })
+
+        return images
+
+    except Exception as e:
+        print(f"Error fetching Unsplash images for park {park_id}: {e}")
+        # Fallback to empty array to prevent frontend errors
+        return []
+
+
+@router.get("/{park_id}/wikipedia")
+async def get_park_wikipedia_info(park_id: int):
+    """Get Wikipedia information for a park."""
+    try:
+        import httpx
+
+        # Get park information
+        with Session(get_engine()) as session:
+            park = session.get(ParkDB, park_id)
+            if not park:
+                return {"wikipedia_info": {"title": park.name, "extract": "Informations non disponibles."}}
+
+            park_name = park.name
+
+        # Try different search names for Wikipedia
+        search_names = [
+            park_name,
+            park_name.replace('Parc National', '').strip(),
+            park_name.replace('Parc', '').strip(),
+            f"{park_name} Tunisie"
+        ]
+
+        for search_name in search_names:
+            try:
+                # Format name for Wikipedia URL
+                wiki_name = search_name.replace(' ', '_')
+
+                # Try French Wikipedia first
+                url = f"https://fr.wikipedia.org/api/rest_v1/page/summary/{wiki_name}"
+
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    response = await client.get(url)
+                    if response.status_code == 200:
+                        data = response.json()
+                        if 'extract' in data and data['extract']:
+                            return {
+                                "wikipedia_info": {
+                                    "title": data.get('title', park_name),
+                                    "extract": data['extract'][:500] + "..." if len(data['extract']) > 500 else data['extract'],
+                                    "url": data.get('content_urls', {}).get('desktop', {}).get('page', f"https://fr.wikipedia.org/wiki/{wiki_name}")
+                                }
+                            }
+            except Exception as e:
+                print(f"Wikipedia search failed for {search_name}: {e}")
+                continue
+
+        # If no Wikipedia info found, return basic info
+        return {
+            "wikipedia_info": {
+                "title": park_name,
+                "extract": f"Informations détaillées sur {park_name} non disponibles dans Wikipedia.",
+                "url": None
+            }
+        }
+
+    except Exception as e:
+        print(f"Error fetching Wikipedia info for park {park_id}: {e}")
+        # Fallback to basic info
+        return {"wikipedia_info": {"title": "Information non disponible", "extract": "Erreur lors de la récupération des informations."}}
+
+
+@router.get("/{park_id}/nearby-places")
+async def get_park_nearby_places(park_id: int, place_type: str = "restaurant", radius: int = 5000):
+    """Get nearby places for a park."""
+    try:
+        # For demo purposes, return mock data since we don't have Google Places API key
+        # In production, this would use Google Places API or similar service
+
+        # Get park information
+        with Session(get_engine()) as session:
+            park = session.get(ParkDB, park_id)
+            if not park:
+                return {"places": []}
+
+        # Mock nearby places based on place type
+        mock_places = {
+            "restaurant": [
+                {"name": "Restaurant Traditionnel Tunisien", "address": f"Près de {park.name}", "rating": 4.2, "open_now": True},
+                {"name": "Café Maure", "address": f"Centre de {park.governorate}", "rating": 4.5, "open_now": False},
+                {"name": "Restaurant Italien", "address": f"Zone touristique, {park.governorate}", "rating": 4.1, "open_now": True}
+            ],
+            "hotel": [
+                {"name": "Hôtel Nature", "address": f"Vue sur {park.name}", "rating": 4.3, "open_now": True},
+                {"name": "Éco-Lodge Tunisien", "address": f"Près de l'entrée du parc", "rating": 4.6, "open_now": True}
+            ],
+            "cafe": [
+                {"name": "Café des Voyageurs", "address": f"Entrée de {park.name}", "rating": 4.0, "open_now": True},
+                {"name": "Café Traditionnel", "address": f"Centre-ville {park.governorate}", "rating": 3.8, "open_now": False}
+            ],
+            "gas_station": [
+                {"name": "Station Service Principale", "address": f"Route de {park.governorate}", "rating": 3.9, "open_now": True},
+                {"name": "Station Shell", "address": f"Périphérie de {park.governorate}", "rating": 4.1, "open_now": True}
+            ],
+            "hospital": [
+                {"name": "Hôpital Régional", "address": f"Centre de {park.governorate}", "rating": 4.2, "open_now": True},
+                {"name": "Clinique Privée", "address": f"Zone résidentielle, {park.governorate}", "rating": 4.4, "open_now": False}
+            ]
+        }
+
+        places = mock_places.get(place_type, [])
+        formatted_places = []
+
+        for place in places:
+            formatted_places.append({
+                "name": place["name"],
+                "address": place["address"],
+                "rating": place["rating"],
+                "open_now": place["open_now"],
+                "location": {
+                    "lat": park.latitude + (0.01 * (len(formatted_places) - 1)),  # Mock coordinates near park
+                    "lng": park.longitude + (0.01 * (len(formatted_places) - 1))
+                },
+                "types": [place_type],
+                "price_level": 2
+            })
+
+        return {"places": formatted_places}
+
+    except Exception as e:
+        print(f"Error fetching nearby places for park {park_id}: {e}")
+        # Fallback to empty list
+        return {"places": []}
 
 @router.put("/{park_id}", response_model=Park)
 def update_park(park_id: int, park_in: ParkUpdate, current_user = Depends(get_current_user)):

@@ -31,7 +31,7 @@ from pathlib import Path
 from models import ParkDB, TrailDB, ParkSpeciesLink, SpeciesDB, ReviewDB, SightingDB
 from weather_service import get_weather_for_location
 # Import routers
-from routers import parks, species, trails, auth, weather, gamification
+from routers import parks, species, trails, auth
 
 # Lifespan event
 @asynccontextmanager
@@ -616,9 +616,7 @@ def seed_database():
                 "weight": "25 kg",
                 "best_viewing_months": json.dumps(["Octobre", "Novembre", "Décembre", "Janvier", "Février", "Mars"]),
                 "activity_time": "crépusculaire",
-                "rarity": "rare",
-                "danger_level": "low",
-                "emergency_protocol": "Gardez une distance de sécurité. Ne pas nourrir. En cas de contact accidentel, consultez un vétérinaire pour vérifier les maladies transmissibles."
+                "rarity": "rare"
             },
             {
                 "species_id": 3,
@@ -682,64 +680,7 @@ def seed_database():
                 "weight": "12 kg",
                 "best_viewing_months": json.dumps(["Avril", "Mai", "Juin", "Septembre", "Octobre"]),
                 "activity_time": "crépusculaire",
-                "rarity": "très_rare",
-                "danger_level": "low",
-                "emergency_protocol": "Ne pas approcher. Signaler immédiatement aux gardes du parc si vu."
-            },
-            # Dangerous species with emergency protocols
-            {
-                "species_id": 17,
-                "name": "Sanglier",
-                "scientific_name": "Sus scrofa",
-                "type": "animal",
-                "description": "Un mammifère sauvage robuste aux défenses impressionnantes, commun dans les forêts tunisiennes.",
-                "conservation_status": "Préoccupation mineure",
-                "habitat_type": "Forêts, maquis, zones agricoles",
-                "diet": "Racines, glands, petits animaux",
-                "lifespan": "10 ans",
-                "size": "140 cm",
-                "weight": "150 kg",
-                "best_viewing_months": json.dumps(["Toute l'année"]),
-                "activity_time": "crépusculaire",
-                "rarity": "common",
-                "danger_level": "high",
-                "emergency_protocol": "En cas de morsure: Laver la plaie avec du savon pendant 15 minutes, consulter immédiatement un médecin pour vaccins contre la rage et le tétanos. Ne pas tuer l'animal."
-            },
-            {
-                "species_id": 18,
-                "name": "Vipère Cornue",
-                "scientific_name": "Cerastes cerastes",
-                "type": "animal",
-                "description": "Un serpent venimeux adapté aux environnements désertiques, reconnaissable par ses cornes au-dessus des yeux.",
-                "conservation_status": "Préoccupation mineure",
-                "habitat_type": "Déserts, zones arides",
-                "diet": "Petits rongeurs, lézards",
-                "lifespan": "12 ans",
-                "size": "50 cm",
-                "weight": "0.2 kg",
-                "best_viewing_months": json.dumps(["Mars", "Avril", "Mai", "Septembre", "Octobre", "Novembre"]),
-                "activity_time": "nocturne",
-                "rarity": "rare",
-                "danger_level": "high",
-                "emergency_protocol": "Immobiliser le membre mordu, appeler immédiatement le 190 (SAMU). NE PAS inciser, aspirer ou appliquer de garrot. Garder au repos et transporter à l'hôpital."
-            },
-            {
-                "species_id": 19,
-                "name": "Laurier Rose",
-                "scientific_name": "Nerium oleander",
-                "type": "plant",
-                "description": "Un arbuste ornemental aux fleurs roses, très toxique si ingéré, commun dans les jardins et parcs tunisiens.",
-                "conservation_status": "Préoccupation mineure",
-                "habitat_type": "Jardins, parcs, zones urbaines",
-                "diet": None,
-                "lifespan": "20 ans",
-                "size": "2-6 m",
-                "weight": None,
-                "best_viewing_months": json.dumps(["Toute l'année"]),
-                "activity_time": None,
-                "rarity": "common",
-                "danger_level": "high",
-                "emergency_protocol": "Toxique si ingéré. En cas d'ingestion: Ne pas vomir. Appeler immédiatement le centre antipoison (23 10 90 90) ou les urgences (190). Surveiller les signes de toxicité cardiaque."
+                "rarity": "très_rare"
             },
             # Plants
             {
@@ -1330,7 +1271,7 @@ async def species_detail_page(request: Request, species_id: int):
             "name": specie.name,
             "scientific_name": specie.scientific_name,
             "type": specie.type,
-            "description": specie.description or "Description non disponible.",
+            "description": specie.description,
             "conservation_status": specie.conservation_status,
             "habitat_type": specie.habitat_type,
             "diet": specie.diet,
@@ -1341,150 +1282,13 @@ async def species_detail_page(request: Request, species_id: int):
             "activity_time": specie.activity_time,
             "rarity": specie.rarity,
             "image_url": specie.image_url,
-            "danger_level": specie.danger_level or "none",
-            "emergency_protocol": specie.emergency_protocol or "",
             "parks": parks_data
         }
 
-        # Create a simple HTML response for species detail
-        danger_badge = f'<div class="danger-badge"><i class="fas fa-exclamation-triangle"></i>Niveau de Danger Élevé</div>' if species_data.get('danger_level') == 'high' else ''
-
-        emergency_section = f'<div class="emergency-protocol"><i class="fas fa-medkit"></i><strong>Protocole d\'Urgence:</strong> {species_data.get("emergency_protocol", "Aucune information disponible.")}</div>' if species_data.get('emergency_protocol') else ''
-
-        html_content = f"""<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{species_data['name']} - Parcs Nationaux de Tunisie</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }}
-        .species-card {{
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }}
-        .species-header {{
-            text-align: center;
-            margin-bottom: 30px;
-        }}
-        .species-name {{
-            font-size: 2.5rem;
-            color: #2c5530;
-            margin-bottom: 10px;
-        }}
-        .species-scientific {{
-            font-style: italic;
-            color: #666;
-            font-size: 1.2rem;
-        }}
-        .danger-badge {{
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: #dc3545;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin: 1rem 0;
-        }}
-        .emergency-protocol {{
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 8px;
-            padding: 1rem;
-            margin: 1rem 0;
-            color: #856404;
-        }}
-        .species-info {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }}
-        .info-item {{
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-        }}
-        .info-label {{
-            font-weight: 600;
-            color: #2c5530;
-            margin-bottom: 5px;
-        }}
-        .info-value {{
-            color: #666;
-        }}
-        .back-link {{
-            display: inline-block;
-            color: #2c5530;
-            text-decoration: none;
-            font-weight: 600;
-            padding: 10px 20px;
-            border: 2px solid #2c5530;
-            border-radius: 6px;
-            transition: all 0.3s;
-        }}
-        .back-link:hover {{
-            background: #2c5530;
-            color: white;
-        }}
-    </style>
-</head>
-<body>
-    <div class="species-card">
-        <div class="species-header">
-            <h1 class="species-name">{species_data['name']}</h1>
-            <p class="species-scientific">{species_data['scientific_name']}</p>
-            {danger_badge}
-        </div>
-
-        <div class="species-info">
-            <div class="info-item">
-                <div class="info-label">Type</div>
-                <div class="info-value">{species_data['type'].title()}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Statut de Conservation</div>
-                <div class="info-value">{species_data.get('conservation_status', 'Non évalué')}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Habitat</div>
-                <div class="info-value">{species_data.get('habitat_type', 'Non spécifié')}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Alimentation</div>
-                <div class="info-value">{species_data.get('diet', 'Non spécifié')}</div>
-            </div>
-        </div>
-
-        <div class="info-item" style="grid-column: 1 / -1;">
-            <div class="info-label">Description</div>
-            <div class="info-value">{species_data.get('description', 'Description non disponible.')}</div>
-        </div>
-
-        {emergency_section}
-    </div>
-
-    <a href="/species" class="back-link">
-        <i class="fas fa-arrow-left"></i> Retour à la Biodiversité
-    </a>
-</body>
-</html>"""
-        return HTMLResponse(html_content)
+        return templates.TemplateResponse("species_detail.html", {
+            "request": request,
+            "species": species_data
+        })
 
 @app.get("/parks/{park_slug}", response_class=HTMLResponse)
 async def park_detail_page(request: Request, park_slug: str):
@@ -1579,14 +1383,10 @@ async def park_detail_page(request: Request, park_slug: str):
         logger.error(f"Error in park_detail_page: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-# Include API routers BEFORE catch-all route - CRITICAL ORDER FIX
+# Include API routers AFTER frontend routes - DUAL ROUTING FOR TEST COMPATIBILITY
 # Support both /api and direct paths to match test expectations
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(weather.router, prefix="/weather", tags=["weather"])
-app.include_router(weather.router, prefix="/api/weather", tags=["weather"])
-app.include_router(gamification.router, prefix="/gamification", tags=["gamification"])
-app.include_router(gamification.router, prefix="/api/gamification", tags=["gamification"])
 app.include_router(species.router, prefix="/species", tags=["species"])
 app.include_router(species.router, prefix="/api/species", tags=["species"])
 app.include_router(parks.router, prefix="/parks", tags=["parks"])
@@ -1912,11 +1712,14 @@ async def chat_with_bot(request: dict):
         "suggestions": suggestions
     }
 
-# Catch-all frontend route - MUST be at the absolute bottom for SPA routing
+# Catch-all frontend route - MUST be at the absolute bottom to prevent stealing API requests
 @app.get("/{full_path:path}")
 async def catch_all_frontend(full_path: str, request: Request):
-    # For SPA routing, serve index.html for all unmatched routes
-    # API routes are handled by routers above, so this only catches frontend routes
+    # Prevent the frontend from ever "eating" an API request
+    if any(full_path.startswith(p) for p in ["auth/", "api/auth/", "parks/", "api/parks/", "species/", "api/species/", "trails/", "api/trails/", "health", "search/", "analytics/", "languages", "media/", "chat"]):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+
+    # Serve index.html for all unmatched routes to enable SPA routing
     return templates.TemplateResponse("index.html", {"request": request})
 
 # Initialize monitoring

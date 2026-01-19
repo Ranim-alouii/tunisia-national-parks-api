@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import Session, select
 from database import get_engine
 from models import SpeciesDB
-from schemas import SpeciesCreate, SpeciesUpdate
+from schemas import SpeciesCreate, SpeciesUpdate, Species
 from typing import List
 
 # Create router
@@ -24,7 +24,7 @@ def list_species(
 ):
     """Get a list of all species with optional filtering and search."""
     with Session(get_engine()) as session:
-        stmt = select(SpeciesDB)
+        stmt = select(SpeciesDB.species_id, SpeciesDB.name, SpeciesDB.type, SpeciesDB.scientific_name, SpeciesDB.description, SpeciesDB.conservation_status, SpeciesDB.rarity, SpeciesDB.image_url)
 
         # Apply type filter
         if type:
@@ -50,45 +50,90 @@ def list_species(
         stmt = stmt.offset(skip).limit(limit)
         species_list = session.exec(stmt).all()
 
-        # Convert to proper response format with id alias
-        return [
-            {
-                "id": s.species_id,
-                "name": s.name,
-                "type": s.type,
-                "scientific_name": s.scientific_name,
-                "description": s.description,
-                "threats": s.threats,
-                "protection_measures": s.protection_measures,
-                "safety_guidelines": s.safety_guidelines,
-                "medicinal_use": s.medicinal_use,
-                "image_url": s.image_url,
-                "park_ids": []  # Simplified for now
+        # Convert to Species models and serialize with aliases
+        species_models = []
+        for s in species_list:
+            species_dict = {
+                "species_id": s[0],  # Database field name for model validation
+                "name": s[1],
+                "type": s[2],
+                "scientific_name": s[3],
+                "description": s[4],
+                "conservation_status": s[5],
+                "rarity": s[6],
+                "image_url": s[7],
+                "park_ids": []
             }
-            for s in species_list
-        ]
+            species_models.append(Species.model_validate(species_dict))
+
+        # Serialize with by_alias=True to ensure id field is used
+        return [model.model_dump(by_alias=True) for model in species_models]
+
+async def enhance_species_description(species: SpeciesDB) -> str:
+    """
+    Enhance species description with Wikipedia summary if the local description is too short.
+    """
+    import httpx
+
+    # Check if description is short or generic
+    if not species.description or len(species.description.strip()) < 50:
+        try:
+            # Try scientific name first, then common name
+            search_names = [species.scientific_name, species.name]
+
+            for search_name in search_names:
+                if not search_name:
+                    continue
+
+                # Format name for Wikipedia URL
+                wiki_name = search_name.replace(' ', '_')
+
+                # Try French Wikipedia first
+                url = f"https://fr.wikipedia.org/api/rest_v1/page/summary/{wiki_name}"
+
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    response = await client.get(url)
+                    if response.status_code == 200:
+                        data = response.json()
+                        if 'extract' in data and data['extract']:
+                            # Combine local description with Wikipedia summary
+                            enhanced_desc = species.description or ""
+                            wiki_summary = data['extract'][:300] + "..." if len(data['extract']) > 300 else data['extract']
+                            return f"{enhanced_desc}\n\n{wiki_summary}".strip()
+
+        except Exception as e:
+            print(f"Wikipedia API failed for {species.name}: {e}")
+
+    # Return original description if enhancement fails
+    return species.description or "Description non disponible."
+
 
 @router.get("/{species_id}")
-def get_species(species_id: int):
-    """Get a specific species by ID."""
+async def get_species(species_id: int):
+    """Get a specific species by ID with enhanced description from Wikipedia if needed."""
     with Session(get_engine()) as session:
         species = session.get(SpeciesDB, species_id)
         if not species:
             raise HTTPException(status_code=404, detail="Species not found")
 
-        return {
-            "id": species.species_id,
+        # Enhance description if it's too short
+        enhanced_description = await enhance_species_description(species)
+
+        # Create Species model and serialize with aliases
+        species_dict = {
+            "species_id": species.species_id,
             "name": species.name,
             "type": species.type,
             "scientific_name": species.scientific_name,
-            "description": species.description,
-            "threats": species.threats,
-            "protection_measures": species.protection_measures,
-            "safety_guidelines": species.safety_guidelines,
-            "medicinal_use": species.medicinal_use,
+            "description": enhanced_description,
+            "conservation_status": species.conservation_status,
+            "rarity": species.rarity,
             "image_url": species.image_url,
-            "park_ids": []  # Simplified for now
+            "park_ids": []
         }
+
+        species_model = Species.model_validate(species_dict)
+        return species_model.model_dump(by_alias=True)
 
 @router.post("", status_code=201)
 def create_species(species_in: SpeciesCreate):
