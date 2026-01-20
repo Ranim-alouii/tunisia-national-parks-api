@@ -45,8 +45,8 @@ class Species(BaseModel):
     """Species response model - FIXED"""
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    # This line is the magic fix: it maps the DB name to the API name
-    id: int = Field(alias="species_id") 
+    # Use validation_alias to accept species_id from DB, serialize as id
+    id: int = Field(validation_alias="species_id", serialization_alias="id")
     name: str
     type: Literal["animal", "plant"]
     scientific_name: str
