@@ -236,7 +236,7 @@ class UserBadgeDB(SQLModel, table=True):
     __tablename__ = "user_badges"
 
     user_badge_id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int  # Will be linked to user management system
+    user_id: str  # Can be user ID or guest visitor ID
     badge_id: int = Field(foreign_key="badges.badge_id")
 
     earned_at: str = Field(default_factory=lambda: datetime.now().isoformat())
@@ -250,7 +250,7 @@ class UserStatsDB(SQLModel, table=True):
     __tablename__ = "user_stats"
 
     user_stats_id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int  # Will be linked to user management system
+    user_id: str  # Can be user ID or guest visitor ID
 
     # Activity counters
     parks_visited: int = Field(default=0)
@@ -459,6 +459,26 @@ class ParkAlert(SQLModel):
     end_date: Optional[str] = None
     is_active: bool = Field(default=True)
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class AdminUser(SQLModel, table=True):
+    """Admin user for backend management"""
+    __tablename__ = "admin_users"
+
+    admin_id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(unique=True, min_length=3, max_length=50)
+    email: str = Field(unique=True, max_length=255)
+    hashed_password: str = Field(min_length=8)
+    is_active: bool = Field(default=True)
+    role: str = Field(default="admin", regex="^(admin|superadmin)$")
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    last_login: Optional[str] = None
+
+    __table_args__ = (
+        UniqueConstraint('username', name='unique_admin_username'),
+        UniqueConstraint('email', name='unique_admin_email'),
+        Index('idx_admin_users_active', 'is_active', 'role'),
+    )
 
 
 class UserVisitHistory(SQLModel, table=True):

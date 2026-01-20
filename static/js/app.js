@@ -3,8 +3,26 @@ const API_BASE = '/api';
 let currentUser = null;
 let loadingStates = new Set();
 
+// ========== GUEST SESSION MANAGEMENT ==========
+
+// Initialize or retrieve unique visitor ID
+let uniqueVisitorId = null;
+
+function initializeGuestSession() {
+    uniqueVisitorId = localStorage.getItem('unique_visitor_id');
+    if (!uniqueVisitorId) {
+        const timestamp = Date.now();
+        uniqueVisitorId = `user_${timestamp}`;
+        localStorage.setItem('unique_visitor_id', uniqueVisitorId);
+        console.log('🆔 New guest session created:', uniqueVisitorId);
+    } else {
+        console.log('🆔 Existing guest session found:', uniqueVisitorId);
+    }
+}
+
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', () => {
+    initializeGuestSession();
     initializeApp();
     setupEventListeners();
     setupScrollEffects();
@@ -1167,6 +1185,190 @@ function lazyLoadImages() {
     images.forEach(img => imageObserver.observe(img));
 }
 
+// ========== GAMIFICATION FUNCTIONS ==========
+
+// Fetch and display user stats
+async function loadUserStats() {
+    try {
+        if (!uniqueVisitorId) {
+            console.warn('No visitor ID available');
+            return;
+        }
+
+        const stats = await apiRequest(`/user/stats?user_id=${encodeURIComponent(uniqueVisitorId)}`);
+
+        // Update UI elements with stats
+        updateGamificationUI(stats);
+
+    } catch (error) {
+        console.error('Failed to load user stats:', error);
+    }
+}
+
+// Update gamification UI elements
+function updateGamificationUI(stats) {
+    // Update XP display
+    const xpElement = document.querySelector('.user-xp');
+    if (xpElement) {
+        xpElement.textContent = stats.xp_points || 0;
+    }
+
+    // Update level display
+    const levelElement = document.querySelector('.user-level');
+    if (levelElement) {
+        levelElement.textContent = `Niveau ${stats.level || 1}`;
+    }
+
+    // Update XP progress bar
+    const xpProgress = document.querySelector('.xp-progress');
+    if (xpProgress) {
+        xpProgress.style.width = `${stats.xp_progress_percent || 0}%`;
+    }
+
+    // Update badges display
+    const badgesContainer = document.querySelector('.user-badges');
+    if (badgesContainer && stats.unlocked_badges) {
+        badgesContainer.innerHTML = '';
+
+        stats.unlocked_badges.forEach(badge => {
+            const badgeElement = document.createElement('div');
+            badgeElement.className = 'badge-item';
+            badgeElement.innerHTML = `
+                <i class="${badge.icon || 'fas fa-medal'}"></i>
+                <span>${badge.name}</span>
+            `;
+            badgeElement.title = badge.description || badge.name;
+
+            // Make badges clickable for tooltips
+            badgeElement.addEventListener('click', () => {
+                showBadgeTooltip(badge);
+            });
+
+            badgesContainer.appendChild(badgeElement);
+        });
+    }
+}
+
+// Show badge tooltip with earning instructions
+function showBadgeTooltip(badge) {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'badge-tooltip';
+    tooltip.innerHTML = `
+        <div class="tooltip-header">
+            <i class="${badge.icon || 'fas fa-medal'}"></i>
+            <strong>${badge.name}</strong>
+        </div>
+        <div class="tooltip-description">
+            ${badge.description || 'Description non disponible'}
+        </div>
+        <div class="tooltip-earning-guide">
+            <strong>Comment gagner ce badge:</strong><br>
+            ${getBadgeEarningGuide(badge)}
+        </div>
+    `;
+
+    // Position tooltip
+    tooltip.style.position = 'fixed';
+    tooltip.style.zIndex = '10000';
+    tooltip.style.background = 'white';
+    tooltip.style.border = '1px solid #ddd';
+    tooltip.style.borderRadius = '8px';
+    tooltip.style.padding = '1rem';
+    tooltip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    tooltip.style.maxWidth = '300px';
+    tooltip.style.fontSize = '0.9rem';
+
+    document.body.appendChild(tooltip);
+
+    // Position near mouse or center
+    tooltip.style.left = '50%';
+    tooltip.style.top = '50%';
+    tooltip.style.transform = 'translate(-50%, -50%)';
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        if (tooltip.parentNode) {
+            tooltip.remove();
+        }
+    }, 5000);
+
+    // Click outside to close
+    document.addEventListener('click', function closeTooltip(e) {
+        if (!tooltip.contains(e.target)) {
+            tooltip.remove();
+            document.removeEventListener('click', closeTooltip);
+        }
+    });
+}
+
+// Get earning guide for badges
+function getBadgeEarningGuide(badge) {
+    const guides = {
+        'Conversation Starter': 'Discutez avec l\'assistant pour débloquer ce badge',
+        'Explorateur des Parcs': 'Posez des questions sur les parcs nationaux',
+        'Naturaliste': 'Demandez des informations sur la biodiversité',
+        'default': 'Continuez à explorer et interagir avec l\'application'
+    };
+
+    return guides[badge.name] || guides.default;
+}
+
+// ========== CHAT FUNCTIONS ==========
+
+// Send chat message with visitor ID
+async function sendChatMessage(message) {
+    try {
+        if (!uniqueVisitorId) {
+            showNotification('Erreur: Session non initialisée', 'error');
+            return;
+        }
+
+        const response = await fetch('/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                user_id: uniqueVisitorId
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Chat request failed');
+        }
+
+        const data = await response.json();
+
+        // Process chat response
+        displayChatResponse(data.response);
+
+        // Show suggestions if available
+        if (data.suggestions && data.suggestions.length > 0) {
+            displayChatSuggestions(data.suggestions);
+        }
+
+        // Reload stats after chat (to show XP/badge updates)
+        setTimeout(() => loadUserStats(), 500);
+
+    } catch (error) {
+        console.error('Chat error:', error);
+        showNotification('Erreur lors de l\'envoi du message', 'error');
+    }
+}
+
+// Display chat response (placeholder - implement based on your chat UI)
+function displayChatResponse(response) {
+    console.log('Chat response:', response);
+    // Implement your chat UI update logic here
+}
+
+// Display chat suggestions (placeholder)
+function displayChatSuggestions(suggestions) {
+    console.log('Chat suggestions:', suggestions);
+    // Implement your suggestions UI here
+}
+
 // ========== EXPORT FUNCTIONS ==========
 window.appUtils = {
     apiRequest,
@@ -1180,7 +1382,9 @@ window.appUtils = {
     share,
     getCurrentLocation,
     calculateDistance,
-    debounce
+    debounce,
+    loadUserStats,
+    sendChatMessage
 };
 
 console.log('✅ App utilities loaded');

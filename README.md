@@ -191,17 +191,58 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
 
 ## 🔐 Authentication
 
-The API supports JWT-based authentication:
+The platform supports multiple authentication methods:
+
+### Admin Login
+Access the secret admin panel at `/admin/login` with credentials from `.env`:
 
 ```bash
-# Get access token
-curl -X POST "http://localhost:8000/api/auth/token" \
+# Admin credentials (configured in .env file)
+Username: admin (configurable via ADMIN_USERNAME)
+Password: admin123 (configurable via ADMIN_PASSWORD)
+```
+
+The admin login provides:
+- Backend management access
+- JWT token generation for API access
+- Secure session management
+
+### User Authentication (JWT)
+Standard JWT-based authentication for registered users:
+
+```bash
+# Register new user
+curl -X POST "http://localhost:8000/auth/register" \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"your-password"}'
+  -d '{"username":"user","email":"user@example.com","password":"securepass"}'
+
+# Get access token
+curl -X POST "http://localhost:8000/auth/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=user&password=securepass"
 
 # Use token in requests
 curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
   http://localhost:8000/api/parks
+```
+
+### Guest Sessions
+The platform automatically creates persistent guest sessions using localStorage:
+- Unique visitor ID generation
+- XP and badge persistence across browser sessions
+- No registration required for gamification features
+
+### Environment Configuration
+Configure authentication in your `.env` file:
+
+```env
+# Admin Credentials
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your-secure-admin-password
+
+# JWT Settings
+SECRET_KEY=your-256-bit-secret-key-here
+ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```
 
 ## 🧪 Testing

@@ -4,14 +4,14 @@ Minimal FastAPI application for Tunisia National Parks
 
 from contextlib import asynccontextmanager
 import logging
-
-from fastapi import FastAPI, Request, HTTPException
+from datetime import datetime
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from utils import create_access_token
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.exceptions import RequestValidationError
-from fastapi import Query
+from fastapi import FastAPI, Request, Query, HTTPException
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -28,7 +28,7 @@ from database import get_engine
 from sqlmodel import select, or_, Session, func, SQLModel
 import json
 from pathlib import Path
-from models import ParkDB, TrailDB, ParkSpeciesLink, SpeciesDB, ReviewDB, SightingDB, UserDB, BadgeDB
+from models import ParkDB, TrailDB, ParkSpeciesLink, SpeciesDB, ReviewDB, SightingDB, UserDB, BadgeDB, UserStatsDB, UserBadgeDB, AdminUser
 from weather_service import get_weather_for_location
 # Import routers
 from routers import parks, species, trails, auth, weather, gamification
@@ -48,6 +48,10 @@ async def lifespan(app: FastAPI):
     # Seed with fresh data
     print("🌱 Seeding database with complete 17-park data...")
     seed_database()
+
+    # Create/update admin user
+    print("👤 Creating/updating admin user...")
+    create_or_update_admin_user()
 
     for folder in ["parks", "species", "users", "documents"]:
         Path(f"uploads/{folder}").mkdir(parents=True, exist_ok=True)
@@ -211,6 +215,48 @@ Some endpoints require authentication. Use JWT tokens obtained from `/auth/token
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 templates = Jinja2Templates(directory="templates")
+
+def create_or_update_admin_user():
+    """Create or update the admin user with credentials from environment variables."""
+    from utils import get_password_hash
+
+    admin_username = settings.ADMIN_USERNAME
+    admin_password = settings.ADMIN_PASSWORD
+
+    print(f"👤 Creating/updating admin user: {admin_username}")
+
+    try:
+        with Session(get_engine()) as session:
+            # Check if admin user already exists
+            existing_admin = session.exec(
+                select(AdminUser).where(AdminUser.username == admin_username)
+            ).first()
+
+            hashed_password = get_password_hash(admin_password)
+
+            if existing_admin:
+                # Update existing admin user
+                existing_admin.hashed_password = hashed_password
+                existing_admin.is_active = True
+                existing_admin.last_login = None  # Reset last login
+                print(f"🔄 Updated existing admin user: {admin_username}")
+            else:
+                # Create new admin user
+                admin_user = AdminUser(
+                    username=admin_username,
+                    email=f"{admin_username}@admin.local",
+                    hashed_password=hashed_password,
+                    is_active=True,
+                    role="admin"
+                )
+                session.add(admin_user)
+                print(f"✅ Created new admin user: {admin_username}")
+
+            session.commit()
+            print(f"🎯 Admin user {admin_username} is ready for login")
+
+    except Exception as e:
+        print(f"❌ Error creating/updating admin user: {e}")
 
 # Seed data function
 def seed_database():
@@ -1691,53 +1737,107 @@ def health_check():
 async def get_user_stats(user_id: str):
     """Get user stats and progress for gamification."""
     try:
-        # Parse user_id (handle web_user_123 format)
-        actual_user_id = None
-        if user_id.startswith("web_user_"):
+        with Session(get_engine()) as session:
+            # First, check if it's a registered user
             try:
-                actual_user_id = int(user_id.replace("web_user_", ""))
-            except:
+                user_id_int = int(user_id)
+                user = session.get(UserDB, user_id_int)
+                if user:
+                    # Registered user - use their stored stats
+                    # Get badge details for unlocked badges
+                    unlocked_badges = []
+                    if user.badges_earned:
+                        for badge_id in user.badges_earned:
+                            badge = session.get(BadgeDB, badge_id)
+                            if badge:
+                                unlocked_badges.append({
+                                    "id": badge.badge_id,
+                                    "name": badge.name,
+                                    "description": badge.description,
+                                    "icon": badge.icon,
+                                    "category": badge.category,
+                                    "rarity": badge.rarity
+                                })
+
+                    # Calculate level based on XP
+                    level = (user.xp_points // 100) + 1
+                    xp_for_next_level = (level * 100) - user.xp_points
+                    xp_progress_percent = ((user.xp_points % 100) / 100) * 100
+
+                    return {
+                        "user_id": user.id,
+                        "xp_points": user.xp_points,
+                        "level": level,
+                        "xp_progress_percent": xp_progress_percent,
+                        "xp_for_next_level": xp_for_next_level,
+                        "badges_earned": user.badges_earned or [],
+                        "unlocked_badges": unlocked_badges,
+                        "total_visits": user.total_visits,
+                        "joined_date": user.joined_date
+                    }
+            except ValueError:
+                # Guest user - user_id is a string like "user_1234567890"
                 pass
 
-        if not actual_user_id:
-            return {"error": "Invalid user ID"}
+            # Handle guest user - check if stats exist
+            user_stats = session.exec(
+                select(UserStatsDB).where(UserStatsDB.user_id == user_id)
+            ).first()
 
-        # Get user data from database
-        with Session(get_engine()) as session:
-            user = session.get(UserDB, actual_user_id)
-            if not user:
-                return {"error": "User not found"}
+            if not user_stats:
+                # Create new stats for guest user
+                user_stats = UserStatsDB(
+                    user_id=user_id,
+                    experience_points=0,
+                    total_points=0,
+                    current_level=1,
+                    badges_earned=0,
+                    parks_visited=0,
+                    species_seen=0,
+                    trails_completed=0,
+                    reviews_written=0,
+                    sightings_reported=0,
+                    consecutive_days_active=0
+                )
+                session.add(user_stats)
+                session.commit()
+                session.refresh(user_stats)
 
             # Get badge details for unlocked badges
             unlocked_badges = []
-            if user.badges_earned:
-                for badge_id in user.badges_earned:
-                    badge = session.get(BadgeDB, badge_id)
-                    if badge:
-                        unlocked_badges.append({
-                            "id": badge.badge_id,
-                            "name": badge.name,
-                            "description": badge.description,
-                            "icon": badge.icon,
-                            "category": badge.category,
-                            "rarity": badge.rarity
-                        })
+            user_badges = session.exec(
+                select(UserBadgeDB).where(
+                    (UserBadgeDB.user_id == user_id) & (UserBadgeDB.completed == True)
+                )
+            ).all()
+
+            for user_badge in user_badges:
+                badge = session.get(BadgeDB, user_badge.badge_id)
+                if badge:
+                    unlocked_badges.append({
+                        "id": badge.badge_id,
+                        "name": badge.name,
+                        "description": badge.description,
+                        "icon": badge.icon,
+                        "category": badge.category,
+                        "rarity": badge.rarity
+                    })
 
             # Calculate level based on XP
-            level = (user.xp_points // 100) + 1
-            xp_for_next_level = (level * 100) - user.xp_points
-            xp_progress_percent = ((user.xp_points % 100) / 100) * 100
+            level = (user_stats.experience_points // 100) + 1
+            xp_for_next_level = (level * 100) - user_stats.experience_points
+            xp_progress_percent = ((user_stats.experience_points % 100) / 100) * 100
 
             return {
-                "user_id": user.id,
-                "xp_points": user.xp_points,
+                "user_id": user_id,
+                "xp_points": user_stats.experience_points,
                 "level": level,
                 "xp_progress_percent": xp_progress_percent,
                 "xp_for_next_level": xp_for_next_level,
-                "badges_earned": user.badges_earned or [],
+                "badges_earned": len(unlocked_badges),
                 "unlocked_badges": unlocked_badges,
-                "total_visits": user.total_visits,
-                "joined_date": user.joined_date
+                "total_visits": user_stats.parks_visited,  # Use parks_visited as proxy for visits
+                "joined_date": user_stats.created_at
             }
 
     except Exception as e:
@@ -1960,41 +2060,99 @@ def get_media_config():
     }
 
 # Gamification helper functions
-def award_xp_points(user_id: int, points: int):
-    """Safely award XP points to a user. Only affects user rows."""
+def award_xp_points(user_id, points: int):
+    """Safely award XP points to a user. Works for both int and str user_ids."""
+    print(f"🎯 Awarding {points} XP to user: {user_id}")
     try:
         with Session(get_engine()) as session:
-            # Surgical update: only touches user table, specific user_id
-            stmt = f"UPDATE users SET xp_points = xp_points + {points} WHERE id = {user_id}"
-            session.exec(stmt)
-            session.commit()
-            logger.info(f"Awarded {points} XP to user {user_id}")
-    except Exception as e:
-        logger.error(f"Failed to award XP to user {user_id}: {e}")
-        # Don't break the main functionality
-
-def award_badge(user_id: int, badge_id: int):
-    """Safely award a badge to a user. Only affects user rows."""
-    try:
-        with Session(get_engine()) as session:
-            # Get current user data
-            user = session.get(UserDB, user_id)
-            if not user:
+            # Handle registered users (int user_id)
+            if isinstance(user_id, int):
+                user = session.get(UserDB, user_id)
+                if user:
+                    user.xp_points += points
+                    session.commit()
+                    session.refresh(user)
+                    logger.info(f"Awarded {points} XP to registered user {user_id}")
                 return
 
-            # Check if badge already earned
-            current_badges = user.badges_earned or []
-            if badge_id in current_badges:
+            # Handle guest users (str user_id)
+            user_stats = session.exec(
+                select(UserStatsDB).where(UserStatsDB.user_id == user_id)
+            ).first()
+
+            if not user_stats:
+                user_stats = UserStatsDB(
+                    user_id=user_id,
+                    experience_points=points,
+                    total_points=points,
+                    current_level=1,
+                    badges_earned=0,
+                    parks_visited=0,
+                    species_seen=0,
+                    trails_completed=0,
+                    reviews_written=0,
+                    sightings_reported=0,
+                    consecutive_days_active=0
+                )
+                session.add(user_stats)
+                print(f"🆕 Created new UserStatsDB for guest user: {user_id}")
+            else:
+                user_stats.experience_points += points
+                user_stats.total_points += points
+                print(f"📈 Updated existing UserStatsDB for guest user: {user_id}, new XP: {user_stats.experience_points}")
+
+            session.commit()
+            session.refresh(user_stats)
+            logger.info(f"Awarded {points} XP to guest user {user_id}")
+    except Exception as e:
+        logger.error(f"Failed to award XP to user {user_id}: {e}")
+        print(f"❌ ERROR awarding XP to user {user_id}: {e}")
+        # Don't break the main functionality
+
+def award_badge(user_id, badge_id: int):
+    """Safely award a badge to a user. Works for both int and str user_ids."""
+    try:
+        with Session(get_engine()) as session:
+            # Handle registered users (int user_id)
+            if isinstance(user_id, int):
+                user = session.get(UserDB, user_id)
+                if not user:
+                    return
+
+                # Check if badge already earned
+                current_badges = user.badges_earned or []
+                if badge_id in current_badges:
+                    return  # Already has this badge
+
+                # Add badge to list
+                current_badges.append(badge_id)
+                user.badges_earned = current_badges
+                session.commit()
+                logger.info(f"Awarded badge {badge_id} to registered user {user_id}")
+                return
+
+            # Handle guest users (str user_id)
+            user_badge = session.exec(
+                select(UserBadgeDB).where(
+                    (UserBadgeDB.user_id == user_id) & (UserBadgeDB.badge_id == badge_id)
+                )
+            ).first()
+
+            if user_badge and user_badge.completed:
                 return  # Already has this badge
 
-            # Add badge to list
-            current_badges.append(badge_id)
+            if not user_badge:
+                user_badge = UserBadgeDB(
+                    user_id=user_id,
+                    badge_id=badge_id,
+                    completed=True
+                )
+                session.add(user_badge)
+            else:
+                user_badge.completed = True
 
-            # Surgical update: only touches badges_earned column for specific user
-            stmt = f"UPDATE users SET badges_earned = '{json.dumps(current_badges)}' WHERE id = {user_id}"
-            session.exec(stmt)
             session.commit()
-            logger.info(f"Awarded badge {badge_id} to user {user_id}")
+            logger.info(f"Awarded badge {badge_id} to guest user {user_id}")
     except Exception as e:
         logger.error(f"Failed to award badge {badge_id} to user {user_id}: {e}")
         # Don't break the main functionality
@@ -2039,13 +2197,21 @@ async def chat_with_bot(request: dict):
     message = request.get("message", "").strip().lower()
     user_id = request.get("user_id", "anonymous")  # Get user identifier
 
-    # Parse user_id (handle web_user_123 format)
+    print(f"💬 Chat request received - Message: '{message[:50]}...', User ID: '{user_id}'")
+
+    # Parse user_id (handle both registered users and guest visitors)
     actual_user_id = None
     if user_id.startswith("web_user_"):
         try:
             actual_user_id = int(user_id.replace("web_user_", ""))
         except:
-            pass
+            # It's a guest visitor ID like "user_1234567890"
+            actual_user_id = user_id
+    else:
+        # It's a guest visitor ID like "user_1234567890"
+        actual_user_id = user_id
+
+    print(f"🎯 Parsed user_id: '{actual_user_id}' (type: {type(actual_user_id)})")
 
     # Keyword detection for different topics
     keywords = {
@@ -2169,6 +2335,53 @@ async def chat_with_bot(request: dict):
         "response": response,
         "suggestions": suggestions
     }
+
+# Admin login routes - secret routes for backend management
+@app.get("/admin/login")
+async def admin_login_page(request: Request):
+    """Secret admin login page for backend management."""
+    return templates.TemplateResponse("admin_login.html", {"request": request})
+
+@app.post("/admin/login")
+async def admin_login_auth(request: Request):
+    """Admin login authentication endpoint."""
+    try:
+        form_data = await request.form()
+        username = form_data.get("username")
+        password = form_data.get("password")
+
+        print(f"DEBUG: Received admin login attempt for username='{username}'")
+
+        # Check database for admin user
+        with Session(get_engine()) as session:
+            admin_user = session.exec(
+                select(AdminUser).where(AdminUser.username == username)
+            ).first()
+
+            if not admin_user:
+                print(f"DEBUG: Admin user '{username}' not found in database")
+                return {"error": "Invalid credentials"}
+
+            # Verify password
+            from utils import verify_password
+            if not verify_password(password, admin_user.hashed_password):
+                print(f"DEBUG: Password verification failed for user '{username}'")
+                print(f"DEBUG: Expected hash: {admin_user.hashed_password}")
+                return {"error": "Invalid credentials"}
+
+            print(f"DEBUG: Admin login successful for user '{username}'")
+            access_token = create_access_token(data={"sub": username, "role": "admin"})
+
+            # Update last login
+            admin_user.last_login = datetime.now().isoformat()
+            session.add(admin_user)
+            session.commit()
+
+            return {"access_token": access_token, "token_type": "bearer", "success": True}
+
+    except Exception as e:
+        print(f"DEBUG: Admin login error: {e}")
+        return {"error": "Login failed"}
 
 # Catch-all frontend route - MUST be at the absolute bottom for SPA routing
 @app.get("/{full_path:path}")

@@ -1318,6 +1318,26 @@
         console.error('JavaScript error:', event.error);
         Loading.hide();
     });
+
+    // ========== GUEST SESSION MANAGEMENT ==========
+
+    // Initialize or retrieve unique visitor ID - runs on every page load
+    window.uniqueVisitorId = null;
+
+    function initializeGuestSession() {
+        window.uniqueVisitorId = localStorage.getItem('unique_visitor_id');
+        if (!window.uniqueVisitorId) {
+            const timestamp = Date.now();
+            window.uniqueVisitorId = `user_${timestamp}`;
+            localStorage.setItem('unique_visitor_id', window.uniqueVisitorId);
+            console.log('🆔 New guest session created:', window.uniqueVisitorId);
+        } else {
+            console.log('🆔 Existing guest session found:', window.uniqueVisitorId);
+        }
+    }
+
+    // Initialize immediately when script loads
+    initializeGuestSession();
     </script>
 
     {% block extra_js %}{% endblock %}

@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Administration - Parcs Nationaux de Tunisie{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Admin Login Page Styles */
+.admin-login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem;
+}
+
+.admin-login-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    padding: 3rem;
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.admin-login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.admin-login-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    margin: 0 auto 1rem;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.admin-login-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+}
+
+.admin-login-subtitle {
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.admin-login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.admin-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.admin-form-label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-form-input {
+    padding: 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.admin-form-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background: white;
+}
+
+.admin-login-btn {
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+}
+
+.admin-login-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.admin-back-link {
+    display: inline-block;
+    margin-top: 2rem;
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.admin-back-link:hover {
+    color: #764ba2;
+}
+
+.admin-error-message {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    display: none;
+}
+
+@media (max-width: 480px) {
+    .admin-login-container {
+        padding: 1rem;
+    }
+
+    .admin-login-card {
+        padding: 2rem;
+    }
+
+    .admin-login-title {
+        font-size: 1.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-login-container">
+    <div class="admin-login-card">
+        <div class="admin-login-header">
+            <div class="admin-login-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h1 class="admin-login-title">Administration</h1>
+            <p class="admin-login-subtitle">Accès réservé aux administrateurs système</p>
+        </div>
+
+        <div id="errorMessage" class="admin-error-message">
+            Identifiants incorrects. Veuillez réessayer.
+        </div>
+
+        <form id="adminLoginForm" class="admin-login-form">
+            <div class="admin-form-group">
+                <label for="username" class="admin-form-label">Nom d'utilisateur</label>
+                <input type="text" id="username" name="username" class="admin-form-input" required>
+            </div>
+
+            <div class="admin-form-group">
+                <label for="password" class="admin-form-label">Mot de passe</label>
+                <input type="password" id="password" name="password" class="admin-form-input" required>
+            </div>
+
+            <button type="submit" id="loginBtn" class="admin-login-btn">
+                <i class="fas fa-sign-in-alt"></i> Se connecter
+            </button>
+        </form>
+
+        <a href="/" class="admin-back-link">
+            <i class="fas fa-arrow-left"></i> Retour au site public
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Admin login functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('adminLoginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const errorMessage = document.getElementById('errorMessage');
+
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        // Show loading state
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
+
+        try {
+            const response = await fetch('/admin/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    username: username,
+                    password: password
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Store token
+                localStorage.setItem('admin_token', data.access_token);
+
+                // Redirect to admin dashboard (placeholder - implement later)
+                window.location.href = '/admin/dashboard';
+            } else {
+                // Show error
+                errorMessage.textContent = data.error || 'Identifiants incorrects. Veuillez réessayer.';
+                errorMessage.style.display = 'block';
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            errorMessage.textContent = 'Erreur de connexion. Veuillez réessayer.';
+            errorMessage.style.display = 'block';
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
+        }
+    });
+
+    // Hide error message when user starts typing
+    document.getElementById('username').addEventListener('input', function() {
+        errorMessage.style.display = 'none';
+    });
+
+    document.getElementById('password').addEventListener('input', function() {
+        errorMessage.style.display = 'none';
+    });
+});
+</script>
+{% endblock %}
