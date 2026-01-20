@@ -305,6 +305,7 @@ class UserDB(SQLModel, table=True):
     location: str | None = Field(default=None, max_length=255)
     favorite_parks: list[int] = Field(default_factory=list, sa_column=Column(JSON))
     badges_earned: list[int] = Field(default_factory=list, sa_column=Column(JSON))
+    xp_points: int = Field(default=0)
     total_visits: int = Field(default=0)
     joined_date: str = Field(default_factory=lambda: datetime.now().isoformat())
     is_active: bool = Field(default=True)

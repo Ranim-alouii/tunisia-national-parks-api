@@ -28,7 +28,7 @@ from database import get_engine
 from sqlmodel import select, or_, Session, func, SQLModel
 import json
 from pathlib import Path
-from models import ParkDB, TrailDB, ParkSpeciesLink, SpeciesDB, ReviewDB, SightingDB
+from models import ParkDB, TrailDB, ParkSpeciesLink, SpeciesDB, ReviewDB, SightingDB, UserDB, BadgeDB
 from weather_service import get_weather_for_location
 # Import routers
 from routers import parks, species, trails, auth, weather, gamification
@@ -1674,10 +1674,75 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"error": {"code": 422, "message": "Validation failed", "details": exc.errors()}},
     )
 
-# Health check
+# Health profile page
 @app.get("/health")
+async def health_form(request: Request):
+    """Serve the health profile form page."""
+    return templates.TemplateResponse("health.html", {"request": request})
+
+# Legacy health check endpoint for API compatibility
+@app.get("/api/health")
 def health_check():
+    """Legacy health check endpoint for API monitoring tools."""
     return {"status": "ok", "version": "3.0.0"}
+
+# User stats endpoint for gamification
+@app.get("/api/user/stats")
+async def get_user_stats(user_id: str):
+    """Get user stats and progress for gamification."""
+    try:
+        # Parse user_id (handle web_user_123 format)
+        actual_user_id = None
+        if user_id.startswith("web_user_"):
+            try:
+                actual_user_id = int(user_id.replace("web_user_", ""))
+            except:
+                pass
+
+        if not actual_user_id:
+            return {"error": "Invalid user ID"}
+
+        # Get user data from database
+        with Session(get_engine()) as session:
+            user = session.get(UserDB, actual_user_id)
+            if not user:
+                return {"error": "User not found"}
+
+            # Get badge details for unlocked badges
+            unlocked_badges = []
+            if user.badges_earned:
+                for badge_id in user.badges_earned:
+                    badge = session.get(BadgeDB, badge_id)
+                    if badge:
+                        unlocked_badges.append({
+                            "id": badge.badge_id,
+                            "name": badge.name,
+                            "description": badge.description,
+                            "icon": badge.icon,
+                            "category": badge.category,
+                            "rarity": badge.rarity
+                        })
+
+            # Calculate level based on XP
+            level = (user.xp_points // 100) + 1
+            xp_for_next_level = (level * 100) - user.xp_points
+            xp_progress_percent = ((user.xp_points % 100) / 100) * 100
+
+            return {
+                "user_id": user.id,
+                "xp_points": user.xp_points,
+                "level": level,
+                "xp_progress_percent": xp_progress_percent,
+                "xp_for_next_level": xp_for_next_level,
+                "badges_earned": user.badges_earned or [],
+                "unlocked_badges": unlocked_badges,
+                "total_visits": user.total_visits,
+                "joined_date": user.joined_date
+            }
+
+    except Exception as e:
+        logger.error(f"Error getting user stats for {user_id}: {e}")
+        return {"error": "Failed to load user stats"}
 
 # Park comparison endpoint
 @app.get("/parks/compare")
@@ -1894,18 +1959,211 @@ def get_media_config():
         "s3_enabled": False
     }
 
+# Gamification helper functions
+def award_xp_points(user_id: int, points: int):
+    """Safely award XP points to a user. Only affects user rows."""
+    try:
+        with Session(get_engine()) as session:
+            # Surgical update: only touches user table, specific user_id
+            stmt = f"UPDATE users SET xp_points = xp_points + {points} WHERE id = {user_id}"
+            session.exec(stmt)
+            session.commit()
+            logger.info(f"Awarded {points} XP to user {user_id}")
+    except Exception as e:
+        logger.error(f"Failed to award XP to user {user_id}: {e}")
+        # Don't break the main functionality
+
+def award_badge(user_id: int, badge_id: int):
+    """Safely award a badge to a user. Only affects user rows."""
+    try:
+        with Session(get_engine()) as session:
+            # Get current user data
+            user = session.get(UserDB, user_id)
+            if not user:
+                return
+
+            # Check if badge already earned
+            current_badges = user.badges_earned or []
+            if badge_id in current_badges:
+                return  # Already has this badge
+
+            # Add badge to list
+            current_badges.append(badge_id)
+
+            # Surgical update: only touches badges_earned column for specific user
+            stmt = f"UPDATE users SET badges_earned = '{json.dumps(current_badges)}' WHERE id = {user_id}"
+            session.exec(stmt)
+            session.commit()
+            logger.info(f"Awarded badge {badge_id} to user {user_id}")
+    except Exception as e:
+        logger.error(f"Failed to award badge {badge_id} to user {user_id}: {e}")
+        # Don't break the main functionality
+
+def check_badge_eligibility(user_id: int, activity_type: str):
+    """Check if user qualifies for badges based on their activity. Returns newly earned badge names."""
+    newly_earned_badges = []
+
+    try:
+        with Session(get_engine()) as session:
+            user = session.get(UserDB, user_id)
+            if not user:
+                return newly_earned_badges
+
+            # Check for conversation starter badge (first chat message)
+            if activity_type == "chat_message":
+                if not user.badges_earned or 1 not in user.badges_earned:
+                    award_badge(user_id, 1)  # Conversation Starter badge
+                    newly_earned_badges.append("Conversation Starter")
+
+            # Check for explorer badge (asked about parks)
+            elif activity_type == "asked_parks":
+                if not user.badges_earned or 2 not in user.badges_earned:
+                    award_badge(user_id, 2)  # Park Explorer badge
+                    newly_earned_badges.append("Explorateur des Parcs")
+
+            # Check for naturalist badge (asked about species)
+            elif activity_type == "asked_species":
+                if not user.badges_earned or 3 not in user.badges_earned:
+                    award_badge(user_id, 3)  # Naturalist badge
+                    newly_earned_badges.append("Naturaliste")
+
+    except Exception as e:
+        logger.error(f"Badge eligibility check failed for user {user_id}: {e}")
+
+    return newly_earned_badges
+
 # Chat endpoint
 @app.post("/chat")
 async def chat_with_bot(request: dict):
-    """Simple chat endpoint."""
-    message = request.get("message", "").lower()
+    """Intelligent chat endpoint with keyword analysis and database integration."""
+    message = request.get("message", "").strip().lower()
+    user_id = request.get("user_id", "anonymous")  # Get user identifier
 
-    if "parc" in message or "parks" in message:
-        response = "Here is a list of Tunisia's national parks."
-        suggestions = ["View map", "List parks", "Parks near Tunis"]
-    else:
-        response = "Hello! I'm the Tunisia National Parks assistant."
-        suggestions = ["List parks", "Species", "Trails", "Weather"]
+    # Parse user_id (handle web_user_123 format)
+    actual_user_id = None
+    if user_id.startswith("web_user_"):
+        try:
+            actual_user_id = int(user_id.replace("web_user_", ""))
+        except:
+            pass
+
+    # Keyword detection for different topics
+    keywords = {
+        'parks': ['parc', 'parks', 'national', 'réserve', 'réserves'],
+        'species': ['animal', 'espèce', 'espèces', 'faune', 'flore', 'biodiversité', 'oiseau', 'mammifère'],
+        'trails': ['sentier', 'randonnée', 'marche', 'chemin', 'trail', 'hiking'],
+        'weather': ['météo', 'temps', 'climat', 'pluie', 'soleil'],
+        'emergency': ['urgence', 'danger', 'accident', 'aide', 'secours']
+    }
+
+    # Determine the topic based on keywords
+    detected_topic = None
+    for topic, words in keywords.items():
+        if any(word in message for word in words):
+            detected_topic = topic
+            break
+
+    try:
+        # Generate response based on detected topic
+        with Session(get_engine()) as session:
+            if detected_topic == 'parks':
+                # Query database for parks info
+                parks = session.exec(select(ParkDB).limit(5)).all()
+                total_parks = len(session.exec(select(ParkDB)).all())
+
+                response_lines = [
+                    f"🌿 Nous avons {total_parks} parcs nationaux en Tunisie!",
+                    "Voici quelques exemples remarquables :"
+                ]
+
+                for park in parks[:3]:
+                    response_lines.append(f"• {park.name} ({park.governorate}) - {park.area_km2} km²")
+
+                response = "\n".join(response_lines)
+                suggestions = ["Voir la carte", "Liste complète", "Parcs près de Tunis"]
+
+            elif detected_topic == 'species':
+                # Query database for species info
+                species = session.exec(select(SpeciesDB).limit(5)).all()
+                total_species = len(session.exec(select(SpeciesDB)).all())
+
+                response_lines = [
+                    f"🦋 Notre base de données contient {total_species} espèces!",
+                    "Découvrez quelques-unes de nos espèces rares :"
+                ]
+
+                # Get some rare species
+                rare_species = session.exec(
+                    select(SpeciesDB).where(SpeciesDB.rarity.in_(['rare', 'très_rare'])).limit(3)
+                ).all()
+
+                for specie in rare_species:
+                    rarity_text = "Rare" if specie.rarity == 'rare' else "Très rare"
+                    response_lines.append(f"• {specie.name} ({rarity_text}) - {specie.conservation_status or 'Statut à déterminer'}")
+
+                response = "\n".join(response_lines)
+                suggestions = ["Voir toutes les espèces", "Espèces en danger", "Guide d'observation"]
+
+            elif detected_topic == 'trails':
+                # Query database for trails info
+                trails = session.exec(select(TrailDB).limit(3)).all()
+                total_trails = len(session.exec(select(TrailDB)).all())
+
+                response_lines = [
+                    f"🥾 Plus de {total_trails} sentiers de randonnée vous attendent!",
+                    "Quelques suggestions de parcours :"
+                ]
+
+                for trail in trails:
+                    difficulty_text = {
+                        'facile': 'Facile',
+                        'modéré': 'Modéré',
+                        'difficile': 'Difficile'
+                    }.get(trail.difficulty, trail.difficulty)
+                    response_lines.append(f"• {trail.name} - {trail.length_km} km ({difficulty_text})")
+
+                response = "\n".join(response_lines)
+                suggestions = ["Tous les sentiers", "Par difficulté", "Carte des randonnées"]
+
+            elif detected_topic == 'weather':
+                response = "🌤️ Je peux vous aider avec les informations météorologiques!\n\nSélectionnez un parc pour connaître la météo actuelle :\n• Ichkeul\n• Boukornine\n• Chambi\n• Zaghouan"
+                suggestions = ["Météo Ichkeul", "Prévisions", "Conditions actuelles"]
+
+            elif detected_topic == 'emergency':
+                response = "🚨 URGENCE DÉTECTÉE\n\nJe vais vous guider pour obtenir de l'aide immédiate :\n\n1. Restez calme et en sécurité\n2. Appelez le 190 (SAMU) pour les urgences médicales\n3. Police: 197\n4. Partagez votre localisation si possible\n\nQuelle est votre situation d'urgence ?"
+                suggestions = ["Appeler SAMU", "Contacter Police", "Partager position"]
+
+            else:
+                # Fallback for unrecognized queries
+                response = "🤔 Je peux vous renseigner sur les parcs nationaux, la faune et la flore, les sentiers de randonnée, la météo et les situations d'urgence.\n\nQue souhaitez-vous savoir ?"
+                suggestions = ["Liste des parcs", "Espèces rares", "Sentiers de marche", "Météo", "Numéros d'urgence"]
+
+    except Exception as e:
+        # Database error handling
+        logger.error(f"Chat database error: {e}")
+        response = "🤖 Désolé, je rencontre un problème technique. Veuillez réessayer dans quelques instants."
+        suggestions = ["Réessayer", "Contacter support"]
+
+    # Award XP points for user interaction (safe - only affects user rows)
+    if actual_user_id:
+        try:
+            award_xp_points(actual_user_id, 5)  # 5 XP per message
+
+            # Check for badge eligibility based on activity
+            if detected_topic == 'parks':
+                check_badge_eligibility(actual_user_id, "asked_parks")
+            elif detected_topic == 'species':
+                check_badge_eligibility(actual_user_id, "asked_species")
+
+            # Always check for conversation starter
+            check_badge_eligibility(actual_user_id, "chat_message")
+
+        except Exception as e:
+            logger.error(f"Gamification error for user {actual_user_id}: {e}")
+            # Gamification failures don't break the chat
+
+    # Log the final response for debugging
+    logger.info(f"Chat response: {response[:100]}...")
 
     return {
         "response": response,

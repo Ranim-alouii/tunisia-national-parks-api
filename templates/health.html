@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}Health Profile - Parcs Nationaux de Tunisie{% endblock %}
+
+{% block extra_css %}
+<style>
+.health-hero {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #065f46;
+    padding: 4rem 0;
+    text-align: center;
+}
+
+.health-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.health-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.health-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-section {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border-left: 4px solid #10b981;
+}
+
+.form-section h3 {
+    margin: 0 0 1rem 0;
+    color: #374151;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #10b981;
+}
+
+.checkbox-item label {
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group textarea {
+    padding: 0.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.privacy-notice {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.privacy-notice h4 {
+    margin: 0 0 0.5rem 0;
+    color: #92400e;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.privacy-notice p {
+    margin: 0;
+    color: #92400e;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.save-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 1rem;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.save-btn:active {
+    transform: translateY(0);
+}
+
+.success-message {
+    background: #d1fae5;
+    border: 1px solid #10b981;
+    color: #065f46;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    display: none;
+}
+
+.emergency-integration {
+    background: #fee2e2;
+    border: 1px solid #ef4444;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.emergency-integration h4 {
+    margin: 0 0 0.5rem 0;
+    color: #dc2626;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.emergency-integration p {
+    margin: 0;
+    color: #dc2626;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+    .checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .health-hero {
+        padding: 3rem 1rem;
+    }
+
+    .health-card {
+        padding: 1.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="health-hero">
+    <div class="container">
+        <div class="health-container">
+            <h1>🏥 Health Profile</h1>
+            <p class="text-lg" style="max-width: 500px; margin: 0 auto; opacity: 0.8;">
+                Help us keep you safe by sharing your health information.
+                This data will only be used in emergency situations.
+            </p>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="health-container">
+            <div class="health-card">
+                <form id="healthForm" class="health-form">
+                    <div class="form-section">
+                        <h3>🫁 Medical Conditions</h3>
+                        <p style="margin: 0 0 1rem 0; color: #6b7280; font-size: 0.9rem;">
+                            Check any conditions that apply to you. This information helps rangers provide appropriate assistance.
+                        </p>
+                        <div class="checkbox-grid">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="asthma" name="asthma">
+                                <label for="asthma">Asthma</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="diabetes" name="diabetes">
+                                <label for="diabetes">Diabetes</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="allergies" name="allergies">
+                                <label for="allergies">Severe Allergies</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="heart_condition" name="heart_condition">
+                                <label for="heart_condition">Heart Condition</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="high_blood_pressure" name="high_blood_pressure">
+                                <label for="high_blood_pressure">High Blood Pressure</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="mobility_issues" name="mobility_issues">
+                                <label for="mobility_issues">Mobility Issues</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>🩸 Blood Type & Emergency Contact</h3>
+                        <div class="form-group">
+                            <label for="blood_type">Blood Type (Optional)</label>
+                            <input type="text" id="blood_type" name="blood_type"
+                                   placeholder="e.g., A+, O-, B+"
+                                   pattern="^(A|B|AB|O)[+-]$"
+                                   title="Please enter a valid blood type (e.g., A+, O-)">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="emergency_contact_name">Emergency Contact Name</label>
+                            <input type="text" id="emergency_contact_name" name="emergency_contact_name"
+                                   placeholder="Full name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="emergency_contact_phone">Emergency Contact Phone</label>
+                            <input type="tel" id="emergency_contact_phone" name="emergency_contact_phone"
+                                   placeholder="+216 XX XXX XXX" required>
+                        </div>
+                    </div>
+
+                    <div class="privacy-notice">
+                        <h4>🔒 Privacy & Security</h4>
+                        <p>Your health information is stored locally on your device and will only be shared with park rangers in genuine emergency situations. We never share this data with third parties.</p>
+                    </div>
+
+                    <div class="emergency-integration">
+                        <h4>🚨 Emergency Integration</h4>
+                        <p>This health profile will be automatically included in any emergency alerts sent to park rangers, helping them provide you with the most appropriate assistance.</p>
+                    </div>
+
+                    <button type="submit" class="save-btn">
+                        <i class="fas fa-save"></i> Save Health Profile
+                    </button>
+
+                    <div id="successMessage" class="success-message">
+                        <i class="fas fa-check-circle"></i>
+                        Health profile saved successfully! Your information will be available for emergency situations.
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Health profile management
+document.addEventListener('DOMContentLoaded', () => {
+    loadHealthProfile();
+    setupFormSubmission();
+});
+
+// Load saved health profile from localStorage
+function loadHealthProfile() {
+    const profile = getHealthProfile();
+
+    // Load checkboxes
+    ['asthma', 'diabetes', 'allergies', 'heart_condition', 'high_blood_pressure', 'mobility_issues'].forEach(condition => {
+        const checkbox = document.getElementById(condition);
+        if (checkbox && profile[condition]) {
+            checkbox.checked = true;
+        }
+    });
+
+    // Load text inputs
+    ['blood_type', 'emergency_contact_name', 'emergency_contact_phone'].forEach(field => {
+        const input = document.getElementById(field);
+        if (input && profile[field]) {
+            input.value = profile[field];
+        }
+    });
+}
+
+// Setup form submission
+function setupFormSubmission() {
+    const form = document.getElementById('healthForm');
+    const successMessage = document.getElementById('successMessage');
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const profile = {};
+
+        // Collect checkbox values
+        ['asthma', 'diabetes', 'allergies', 'heart_condition', 'high_blood_pressure', 'mobility_issues'].forEach(condition => {
+            profile[condition] = formData.has(condition);
+        });
+
+        // Collect text input values
+        ['blood_type', 'emergency_contact_name', 'emergency_contact_phone'].forEach(field => {
+            profile[field] = formData.get(field) || '';
+        });
+
+        // Save to localStorage
+        saveHealthProfile(profile);
+
+        // Show success message
+        successMessage.style.display = 'block';
+        setTimeout(() => {
+            successMessage.style.display = 'none';
+        }, 5000);
+
+        console.log('Health profile saved:', profile);
+    });
+}
+
+// Save health profile to localStorage
+function saveHealthProfile(profile) {
+    try {
+        localStorage.setItem('healthProfile', JSON.stringify(profile));
+        console.log('Health profile saved to localStorage');
+    } catch (error) {
+        console.error('Failed to save health profile:', error);
+        alert('Failed to save health profile. Please try again.');
+    }
+}
+
+// Get health profile from localStorage
+function getHealthProfile() {
+    try {
+        const profile = localStorage.getItem('healthProfile');
+        return profile ? JSON.parse(profile) : {};
+    } catch (error) {
+        console.error('Failed to load health profile:', error);
+        return {};
+    }
+}
+
+// Emergency integration - make health data available globally
+window.getEmergencyHealthData = function() {
+    const profile = getHealthProfile();
+    if (!profile.emergency_contact_name || !profile.emergency_contact_phone) {
+        return null;
+    }
+
+    let conditions = [];
+    ['asthma', 'diabetes', 'allergies', 'heart_condition', 'high_blood_pressure', 'mobility_issues'].forEach(condition => {
+        if (profile[condition]) {
+            conditions.push(condition.replace('_', ' '));
+        }
+    });
+
+    return {
+        emergency_contact: {
+            name: profile.emergency_contact_name,
+            phone: profile.emergency_contact_phone
+        },
+        medical_conditions: conditions,
+        blood_type: profile.blood_type || null
+    };
+};
+
+// Blood type validation
+document.getElementById('blood_type').addEventListener('input', function(e) {
+    const value = e.target.value.toUpperCase();
+    const validTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+    if (value && !validTypes.includes(value)) {
+        e.target.setCustomValidity('Please enter a valid blood type (e.g., A+, O-)');
+    } else {
+        e.target.setCustomValidity('');
+    }
+
+    e.target.value = value;
+});
+
+// Phone number formatting
+document.getElementById('emergency_contact_phone').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+
+    if (value.startsWith('216')) {
+        value = '+' + value;
+    } else if (value.startsWith('00216')) {
+        value = '+' + value.substring(2);
+    } else if (!value.startsWith('+') && value.length > 0) {
+        value = '+216' + value;
+    }
+
+    // Format as +216 XX XXX XXX
+    if (value.startsWith('+216') && value.length > 4) {
+        const num = value.substring(4);
+        if (num.length <= 2) {
+            value = '+216 ' + num;
+        } else if (num.length <= 5) {
+            value = '+216 ' + num.substring(0, 2) + ' ' + num.substring(2);
+        } else {
+            value = '+216 ' + num.substring(0, 2) + ' ' + num.substring(2, 5) + ' ' + num.substring(5, 8);
+        }
+    }
+
+    e.target.value = value;
+});
+
+console.log('Health profile form initialized');
+</script>
+{% endblock %}

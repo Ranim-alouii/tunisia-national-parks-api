@@ -157,7 +157,8 @@
     background: white;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
-    overflow: hidden;
+    overflow-y: auto;
+    max-height: 60vh;
     margin-bottom: 2rem;
 }
 
@@ -196,6 +197,7 @@
 
 .user-message {
     flex-direction: row-reverse;
+    justify-content: flex-end;
 }
 
 .user-message .message-content {
@@ -203,10 +205,11 @@
 }
 
 .message-content {
-    flex: 1;
+    max-width: 85%;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    white-space: pre-line;
 }
 
 .message-header {
@@ -230,8 +233,8 @@
 }
 
 .message-text {
-    background: #f8f9fa;
-    padding: 1rem;
+    background: #f0f2f5;
+    padding: 12px 16px;
     border-radius: var(--radius-md);
     line-height: 1.6;
     white-space: pre-line;
@@ -475,7 +478,7 @@ async function sendMessage() {
     showTypingIndicator();
 
     try {
-        const response = await fetch('/api/chat', {
+        const response = await fetch('/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -487,9 +490,14 @@ async function sendMessage() {
         });
 
         const data = await response.json();
+        console.log('Chat response:', data);
 
         // Hide typing indicator
         hideTypingIndicator();
+
+        // Robust response extraction
+        const botMessage = data.response || data.message || data.text || 'Désolé, je n\'ai pas compris.';
+        const suggestions = data.suggestions || [];
 
         // Check for emergency
         if (message.toLowerCase().includes('urgence') ||
@@ -500,8 +508,14 @@ async function sendMessage() {
             document.getElementById('emergencyBanner').style.display = 'block';
         }
 
+        // Check for new badge achievement
+        if (data.new_badge) {
+            console.log('Badge detected:', data.new_badge);
+            showAchievementNotification(data.new_badge);
+        }
+
         // Add bot response
-        addMessage('bot', data.response, data.suggestions);
+        addMessage('bot', botMessage, suggestions);
 
     } catch (error) {
         console.error('Chat error:', error);
@@ -514,6 +528,16 @@ async function sendMessage() {
 function sendSuggestion(text) {
     document.getElementById('messageInput').value = text;
     sendMessage();
+}
+
+// Scroll to bottom of chat
+function scrollToBottom() {
+    const container = document.getElementById('chatContainer');
+    if (container) {
+        setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+        }, 100); // Small delay to ensure DOM is updated
+    }
 }
 
 // Add message to chat
@@ -546,7 +570,7 @@ function addMessage(type, text, suggestions = []) {
     `;
 
     container.appendChild(messageDiv);
-    container.scrollTop = container.scrollHeight;
+    scrollToBottom();
 }
 
 // Typing indicator
@@ -571,7 +595,7 @@ function showTypingIndicator() {
     `;
 
     container.appendChild(indicator);
-    container.scrollTop = container.scrollHeight;
+    scrollToBottom();
 }
 
 function hideTypingIndicator() {
@@ -703,7 +727,7 @@ style.textContent = `
     .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
     .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
-    @keyframes typing {
+@keyframes typing {
         0%, 60%, 100% {
             opacity: 0.3;
             transform: scale(0.8);
@@ -713,7 +737,152 @@ style.textContent = `
             transform: scale(1);
         }
     }
+
+    /* Achievement Notification */
+    .achievement-notification {
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border: 3px solid #f59e0b;
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 15px 35px rgba(245, 158, 11, 0.4);
+        z-index: 9999;
+        max-width: 350px;
+        animation: achievementSlideIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        display: none;
+    }
+
+    @keyframes achievementSlideIn {
+        from {
+            opacity: 0;
+            transform: translateX(400px) scale(0.8);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+
+    .achievement-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .achievement-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        box-shadow: 0 6px 15px rgba(245, 158, 11, 0.4);
+        animation: achievementIconBounce 0.8s ease 0.3s both;
+    }
+
+    @keyframes achievementIconBounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+        }
+        40% {
+            transform: translateY(-10px);
+        }
+        60% {
+            transform: translateY(-5px);
+        }
+    }
+
+    .achievement-content h3 {
+        margin: 0 0 0.5rem 0;
+        color: #92400e;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    .achievement-content p {
+        margin: 0;
+        color: #a16207;
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+
+    .achievement-sparkles {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .achievement-sparkle {
+        position: absolute;
+        font-size: 1rem;
+        animation: sparkleFloat 3s ease-in-out infinite;
+        opacity: 0.8;
+    }
+
+    .achievement-sparkle:nth-child(1) { top: 20%; left: 20%; animation-delay: 0s; }
+    .achievement-sparkle:nth-child(2) { top: 60%; right: 15%; animation-delay: 1s; }
+    .achievement-sparkle:nth-child(3) { bottom: 25%; left: 70%; animation-delay: 2s; }
+
+    @keyframes sparkleFloat {
+        0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+            opacity: 0.8;
+        }
+        50% {
+            transform: translateY(-10px) rotate(180deg);
+            opacity: 0.4;
+        }
+    }
 `;
 document.head.appendChild(style);
+
+// Achievement notification function
+function showAchievementNotification(badgeName) {
+    // Create achievement notification
+    const notification = document.createElement('div');
+    notification.className = 'achievement-notification';
+    notification.innerHTML = `
+        <div class="achievement-sparkles">
+            <div class="achievement-sparkle">✨</div>
+            <div class="achievement-sparkle">💫</div>
+            <div class="achievement-sparkle">⭐</div>
+        </div>
+        <div class="achievement-header">
+            <div class="achievement-icon">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <div class="achievement-content">
+                <h3>Félicitations !</h3>
+                <p>Badge "${badgeName}" débloqué !</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Show notification
+    setTimeout(() => {
+        notification.style.display = 'block';
+    }, 100);
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        notification.style.display = 'none';
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 500);
+    }, 5000);
+
+    console.log('Achievement notification shown for:', badgeName);
+}
 </script>
 {% endblock %}

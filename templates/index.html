@@ -1311,7 +1311,7 @@
 <!-- Enhanced Quick Actions Section -->
 <section class="vibrant-quick-actions" data-aos="fade-up">
     <div class="quick-actions-container">
-        <div class="quick-actions-grid">
+    <div class="quick-actions-grid">
             <a href="/parks" class="quick-action-enhanced" data-aos="zoom-in" data-aos-delay="100">
                 <div class="quick-action-icon-enhanced">
                     <i class="fas fa-tree"></i>
@@ -1352,6 +1352,85 @@
                     <i class="fas fa-arrow-right"></i>
                 </div>
             </a>
+            <a href="/health" class="quick-action-enhanced health-profile-card" data-aos="zoom-in" data-aos-delay="500">
+                <div class="quick-action-icon-enhanced health-icon">
+                    <i class="fas fa-heartbeat"></i>
+                </div>
+                <h3>Mon Profil Santé</h3>
+                <p>Emergency ID - Enregistrez vos infos médicales pour plus de sécurité lors de vos randonnées</p>
+                <div class="quick-action-arrow-enhanced">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+                <div class="health-status-indicator" id="healthStatusIndicator" style="display: none;">
+                    <i class="fas fa-check"></i>
+                </div>
+            </a>
+        </div>
+
+        <!-- User Profile Widget -->
+        <div class="profile-widget-section" data-aos="fade-up">
+            <div class="profile-widget-container">
+                <div class="profile-widget">
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="profile-info">
+                            <h3 class="profile-title">Mon Profil Explorateur</h3>
+                            <div class="xp-display">
+                                <div class="xp-bar-container">
+                                    <div class="xp-bar" id="xpBar">
+                                        <div class="xp-fill" id="xpFill"></div>
+                                    </div>
+                                    <span class="xp-text" id="xpText">0 XP</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="badges-section">
+                        <h4 class="badges-title">🏆 Mes Badges</h4>
+                        <div class="badges-grid">
+                            <div class="badge-item" data-badge-id="1">
+                                <div class="badge-icon">
+                                    <i class="fas fa-comments"></i>
+                                </div>
+                                <div class="badge-info">
+                                    <div class="badge-name">Conversation Starter</div>
+                                    <div class="badge-desc">Premier message envoyé</div>
+                                </div>
+                                <div class="badge-status" id="badge1Status">
+                                    <i class="fas fa-lock"></i>
+                                </div>
+                            </div>
+                            <div class="badge-item" data-badge-id="2">
+                                <div class="badge-icon">
+                                    <i class="fas fa-tree"></i>
+                                </div>
+                                <div class="badge-info">
+                                    <div class="badge-name">Explorateur des Parcs</div>
+                                    <div class="badge-desc">Demande d'infos sur les parcs</div>
+                                </div>
+                                <div class="badge-status" id="badge2Status">
+                                    <i class="fas fa-lock"></i>
+                                </div>
+                            </div>
+                            <div class="badge-item" data-badge-id="3">
+                                <div class="badge-icon">
+                                    <i class="fas fa-paw"></i>
+                                </div>
+                                <div class="badge-info">
+                                    <div class="badge-name">Naturaliste</div>
+                                    <div class="badge-desc">Demande d'infos sur les espèces</div>
+                                </div>
+                                <div class="badge-status" id="badge3Status">
+                                    <i class="fas fa-lock"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </section>
@@ -1985,6 +2064,149 @@ function getFallbackSpecies() {
 }
 
 console.log('Enhanced homepage JavaScript loaded successfully!');
+
+// Initialize user profile and check health status
+loadUserProfile();
+checkHealthProfileStatus();
+
+function loadUserProfile() {
+    // Use a default user ID for demo purposes (web_user_1)
+    const userId = 'web_user_1';
+
+    fetch(`/api/user/stats?user_id=${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.log('User profile not found, using defaults');
+                initializeDefaultProfile();
+                return;
+            }
+
+            updateProfileWidget(data);
+        })
+        .catch(error => {
+            console.error('Error loading user profile:', error);
+            initializeDefaultProfile();
+        });
+}
+
+function updateProfileWidget(profileData) {
+    // Update XP bar
+    const xpFill = document.getElementById('xpFill');
+    const xpText = document.getElementById('xpText');
+
+    if (xpFill && xpText) {
+        const xpPercent = Math.min(profileData.xp_progress_percent || 0, 100);
+        xpFill.style.width = `${xpPercent}%`;
+        xpText.textContent = `${profileData.xp_points || 0} XP`;
+    }
+
+    // Update badges
+    if (profileData.badges_earned) {
+        profileData.badges_earned.forEach(badgeId => {
+            const badgeElement = document.querySelector(`[data-badge-id="${badgeId}"]`);
+            if (badgeElement) {
+                badgeElement.setAttribute('data-badge-unlocked', 'true');
+                const statusElement = document.getElementById(`badge${badgeId}Status`);
+                if (statusElement) {
+                    statusElement.className = 'badge-status unlocked';
+                    statusElement.innerHTML = '<i class="fas fa-unlock"></i>';
+                }
+            }
+        });
+    }
+
+    // Show achievement notifications for newly earned badges
+    if (profileData.unlocked_badges) {
+        profileData.unlocked_badges.forEach(badge => {
+            showAchievementNotification(badge);
+        });
+    }
+
+    console.log('Profile widget updated:', profileData);
+}
+
+function initializeDefaultProfile() {
+    // Set default XP and badge states
+    const xpFill = document.getElementById('xpFill');
+    const xpText = document.getElementById('xpText');
+
+    if (xpFill) xpFill.style.width = '0%';
+    if (xpText) xpText.textContent = '0 XP';
+
+    // All badges start locked
+    [1, 2, 3].forEach(badgeId => {
+        const statusElement = document.getElementById(`badge${badgeId}Status`);
+        if (statusElement) {
+            statusElement.className = 'badge-status locked';
+            statusElement.innerHTML = '<i class="fas fa-lock"></i>';
+        }
+    });
+}
+
+function showAchievementNotification(badge) {
+    // Create achievement notification
+    const notification = document.createElement('div');
+    notification.className = 'achievement-notification';
+    notification.innerHTML = `
+        <div class="achievement-sparkles">
+            <div class="achievement-sparkle">✨</div>
+            <div class="achievement-sparkle">💫</div>
+            <div class="achievement-sparkle">⭐</div>
+        </div>
+        <div class="achievement-header">
+            <div class="achievement-icon">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <div class="achievement-content">
+                <h3>Félicitations !</h3>
+                <p>Badge "${badge.name}" débloqué !</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Show notification
+    setTimeout(() => {
+        notification.style.display = 'block';
+    }, 100);
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        notification.style.display = 'none';
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 500);
+    }, 5000);
+
+    console.log('Achievement notification shown for:', badge.name);
+}
+
+function checkHealthProfileStatus() {
+    try {
+        const profile = localStorage.getItem('healthProfile');
+        const indicator = document.getElementById('healthStatusIndicator');
+
+        if (profile && JSON.parse(profile).emergency_contact_name) {
+            // Profile exists and has emergency contact
+            if (indicator) {
+                indicator.style.display = 'block';
+                console.log('Health profile found - showing check indicator');
+            }
+        } else {
+            // No profile or incomplete
+            if (indicator) {
+                indicator.style.display = 'none';
+                console.log('No health profile found');
+            }
+        }
+    } catch (error) {
+        console.error('Error checking health profile status:', error);
+    }
+}
 </script>
 
 <style>
@@ -2017,6 +2239,359 @@ console.log('Enhanced homepage JavaScript loaded successfully!');
     .hero-cta-primary,
     .hero-cta-secondary {
         border: 2px solid currentColor;
+    }
+}
+
+/* Profile Widget Styles - Tunisian Golden Theme */
+.profile-widget-section {
+    margin-top: 3rem;
+}
+
+.profile-widget-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.profile-widget {
+    background: linear-gradient(135deg, #fef7cd 0%, #fde68a 50%, #f59e0b 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 15px 35px rgba(245, 158, 11, 0.3);
+    border: 3px solid #f59e0b;
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-widget::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="mosaic" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="none"/><circle cx="10" cy="10" r="2" fill="rgba(245,158,11,0.1)"/><circle cx="5" cy="5" r="1" fill="rgba(245,158,11,0.05)"/><circle cx="15" cy="15" r="1" fill="rgba(245,158,11,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23mosaic)"/></svg>');
+    opacity: 0.3;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2.5rem;
+    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+    border: 3px solid #f59e0b;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 0.5rem;
+}
+
+.xp-display {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    padding: 1rem;
+    border: 2px solid #f59e0b;
+}
+
+.xp-bar-container {
+    position: relative;
+    margin-bottom: 0.5rem;
+}
+
+.xp-bar {
+    width: 100%;
+    height: 20px;
+    background: rgba(245, 158, 11, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid #f59e0b;
+}
+
+.xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #d97706, #b45309);
+    border-radius: 8px;
+    width: 0%;
+    transition: width 1s ease;
+    position: relative;
+}
+
+.xp-fill::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.xp-text {
+    font-weight: 600;
+    color: #92400e;
+    font-size: 0.9rem;
+}
+
+.badges-section {
+    position: relative;
+    z-index: 1;
+}
+
+.badges-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.badges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.badge-item {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    padding: 1rem;
+    border: 2px solid #f59e0b;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.badge-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(245,158,11,0.1), transparent);
+    transition: left 0.8s;
+}
+
+.badge-item:hover::before {
+    left: 100%;
+}
+
+.badge-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+}
+
+.badge-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #d1d5db, #9ca3af);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 1.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid #d1d5db;
+}
+
+.badge-item[data-badge-unlocked="true"] .badge-icon {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border-color: #f59e0b;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.badge-info {
+    flex: 1;
+}
+
+.badge-name {
+    font-weight: 600;
+    color: #92400e;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.badge-desc {
+    color: #a16207;
+    font-size: 0.75rem;
+    line-height: 1.3;
+}
+
+.badge-status {
+    font-size: 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.badge-status.locked {
+    color: #d1d5db;
+}
+
+.badge-status.unlocked {
+    color: #f59e0b;
+    animation: badgeUnlock 0.8s ease;
+}
+
+@keyframes badgeUnlock {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+/* Achievement Notification */
+.achievement-notification {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 3px solid #f59e0b;
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 15px 35px rgba(245, 158, 11, 0.4);
+    z-index: 10000;
+    max-width: 350px;
+    animation: achievementSlideIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: none;
+}
+
+@keyframes achievementSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(400px) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+.achievement-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.achievement-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    box-shadow: 0 6px 15px rgba(245, 158, 11, 0.4);
+    animation: achievementIconBounce 0.8s ease 0.3s both;
+}
+
+@keyframes achievementIconBounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+.achievement-content h3 {
+    margin: 0 0 0.5rem 0;
+    color: #92400e;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.achievement-content p {
+    margin: 0;
+    color: #a16207;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.achievement-sparkles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.achievement-sparkle {
+    position: absolute;
+    font-size: 1rem;
+    animation: sparkleFloat 3s ease-in-out infinite;
+    opacity: 0.8;
+}
+
+.achievement-sparkle:nth-child(1) { top: 20%; left: 20%; animation-delay: 0s; }
+.achievement-sparkle:nth-child(2) { top: 60%; right: 15%; animation-delay: 1s; }
+.achievement-sparkle:nth-child(3) { bottom: 25%; left: 70%; animation-delay: 2s; }
+
+@keyframes sparkleFloat {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translateY(-10px) rotate(180deg);
+        opacity: 0.4;
+    }
+}
+
+/* Responsive adjustments for profile widget */
+@media (max-width: 768px) {
+    .profile-widget {
+        padding: 1.5rem;
+    }
+
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+
+    .badges-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .achievement-notification {
+        left: 10px;
+        right: 10px;
+        max-width: none;
     }
 }
 
